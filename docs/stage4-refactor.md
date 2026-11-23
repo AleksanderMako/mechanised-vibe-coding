@@ -50,7 +50,7 @@ func Demethodize(ctx context.Context, root string, method symbols.Symbol, newNam
 
 Common:
 
-1. `Root` without `go.mod` is an ordinary error. Resolution failures wrap `symbols.ErrNotFound`. Load or type errors in the module are ordinary errors and nothing is written.
+1. `Root` without `go.mod` is an ordinary error. Resolution failures wrap `symbols.ErrNotFound`. Load or type errors in the module are handled as stage 9 (`docs/stage9-tolerance.md`) describes; with `Options.Strict` they are ordinary errors and nothing is written.
 2. All rewrites are computed in memory first. Then every changed file is written, needed imports are added by the tool itself (goimports resolves module packages from the process working directory, which the tools never rely on), `golang.org/x/tools/imports.Process` is run on each to format and drop unused imports, and unless `NoBuild` the directories of the written files are built with `go build -o /dev/null` (or `go vet` when a `_test.go` file is among them) from `Root`. Only those directories are built, so a breakage in an importer that was not itself edited is not caught. A failing build restores every written file to its original bytes, recreates deleted files, removes created files and directories, and the error is a `*editset.BuildError`.
 3. The returned slice holds the written files as absolute paths, sorted, and is complete even when the build later fails (the error carries the failure). Deleted files are not listed.
 4. Doc comments move with their declaration and the first word of a doc comment that equals the old name is rewritten to the new name.

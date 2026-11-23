@@ -105,7 +105,7 @@ var ErrNotStruct = errors.New("symbol is not a struct")
 Loading:
 
 4. `Root` empty or without `go.mod` is an ordinary error. Patterns are passed to `packages.Load` relative to `Root`, with `Tests: !ExcludeTests` and syntax plus type info loaded.
-5. Packages with load errors or type errors make the call return an error that names the first package and error. Partial results are never returned.
+5. Packages with load errors or type errors: see stage 9 (`docs/stage9-tolerance.md`), which replaces this rule. With `Options.Strict` the call returns an error that names the first package and error and no partial result.
 6. The symbol's package must be one of the loaded packages or one of their dependencies, so `io.Reader` resolves when the module imports `io`. A symbol whose package is loaded but whose name is not declared there wraps `ErrNotFound`. A package not reachable at all also wraps `ErrNotFound`.
 7. A method `Type.Method` is looked up on the named type with `types.LookupFieldOrMethod` with pointer receiver allowed. A field `Type.Field` is looked up the same way.
 

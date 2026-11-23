@@ -67,3 +67,5 @@ mvc dead orphaned -root DIR [-pkg P]... [-tests] [-json] BEFORE [AFTER]
 ## Out of scope
 
 Configuration files, colour, shell completion, interactive prompts.
+
+Stage 9 adds `-strict` and stderr warnings to `symbols`, `refactor` and `dead`; see `docs/stage9-tolerance.md` rules 14 and 15.

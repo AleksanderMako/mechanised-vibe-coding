@@ -80,7 +80,7 @@ Common:
 19. The declaration loses its receiver and becomes `func newName(params) results`.
 20. Every call `expr.Method(args)` whose selector resolves to this method becomes `newName(args)` in the method's package and `pkg.newName(args)` elsewhere, with the receiver expression dropped. A receiver expression with side effects (a call, a channel receive, an index expression) wraps `ErrUnsupportedUse` because dropping it would change behaviour; identifiers, selectors of identifiers, and pointer dereferences are fine. Dropping the receiver can leave a local variable unused; the build then fails and the operation is restored with a `*editset.BuildError`, which is the intended outcome, not a bug.
 21. A method value or method expression (`x.Method` not called, `T.Method`, `(*T).Method`) wraps `ErrUnsupportedUse`.
-22. When the type satisfies an interface in the loaded packages that has this method and that interface is used as a type anywhere in the loaded packages, the operation wraps `ErrBreaksInterface`.
+22. When the type satisfies an interface that has this method and that interface is used as a type in a loaded package that can see the type (the type's own package or one that imports it, directly or transitively), the operation wraps `ErrBreaksInterface`. Only such a package can assign the type to the interface, so an interface used solely in packages that cannot see the type does not count.
 23. When `newName` is unexported and a call site is in another package, `newName` is exported automatically (first letter upper cased) and the error is not raised; the returned files reflect that name.
 
 ### Out of scope

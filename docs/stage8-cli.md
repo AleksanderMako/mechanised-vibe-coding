@@ -24,18 +24,18 @@ mvc verify run    -root DIR [-pkg P]... [-lint VERSION] [-race] [-all-tests] [-s
 mvc verify flaky  -root DIR -pkg P [-test NAME] [-runs N] [-race] [-json]
 mvc verify changed -root DIR [-json]
 mvc verify vendor  -root DIR
-mvc symbols refs  -root DIR [-pkg P]... [-no-tests] [-json] SYMBOL
-mvc symbols impls -root DIR [-pkg P]... [-no-tests] [-json] IFACE
-mvc symbols tags  -root DIR [-pkg P]... [-json] TYPE
-mvc refactor rename      -root DIR [-pkg P]... [-no-build] [-json] SYMBOL NEWNAME
-mvc refactor move        -root DIR [-pkg P]... [-no-build] [-json] -to IMPORTPATH -to-file FILE SYMBOL...
-mvc refactor demethodize -root DIR [-pkg P]... [-no-build] [-json] TYPE.METHOD [NEWNAME]
+mvc symbols refs  -root DIR [-pkg P]... [-no-tests] [-strict] [-json] SYMBOL
+mvc symbols impls -root DIR [-pkg P]... [-no-tests] [-strict] [-json] IFACE
+mvc symbols tags  -root DIR [-pkg P]... [-strict] [-json] TYPE
+mvc refactor rename      -root DIR [-pkg P]... [-no-build] [-strict] [-json] SYMBOL NEWNAME
+mvc refactor move        -root DIR [-pkg P]... [-no-build] [-strict] [-json] -to IMPORTPATH -to-file FILE SYMBOL...
+mvc refactor demethodize -root DIR [-pkg P]... [-no-build] [-strict] [-json] TYPE.METHOD [NEWNAME]
 mvc env vars      -dir PKGDIR -type TYPE [-json]
 mvc env check     -dir PKGDIR -type TYPE [-env FILE]... [-manifest FILE]... [-json]
 mvc env conflicts [-env FILE]... [-manifest FILE]... [-distinct A,B,...]... [-together A,B,...]... [-requires A:B,C]... [-json]
 mvc merge explain -root DIR [-json]
-mvc dead list     -root DIR [-pkg P]... [-tests] [-json]
-mvc dead orphaned -root DIR [-pkg P]... [-tests] [-json] BEFORE [AFTER]
+mvc dead list     -root DIR [-pkg P]... [-tests] [-strict] [-json]
+mvc dead orphaned -root DIR [-pkg P]... [-tests] [-strict] [-json] BEFORE [AFTER]
 ```
 
 ## Behaviour

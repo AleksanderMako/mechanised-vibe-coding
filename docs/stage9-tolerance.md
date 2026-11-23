@@ -48,10 +48,11 @@ var ErrBrokenPackage = errors.New("a package that may use the symbol has errors"
    package and its first error, and no partial result, as before.
 2. Otherwise, when the declaring package or any of its test variants is broken
    the call is an ordinary error naming it; its symbol table is not trusted.
-3. For `References` and `StructTags`, a broken package that is not the declaring
-   package and does not depend on it cannot mention the symbol. It is not
-   scanned and gets the log line `symbols: ignoring package %s: %v` with the
-   package ID and its first error.
+3. For `References`, a broken package that is not the declaring package and does
+   not depend on it cannot mention the symbol. It is not scanned and gets the
+   log line `symbols: ignoring package %s: %v` with the package ID and its first
+   error. For `StructTags` every broken package other than the declaring package
+   gets this line, since only the declaring package is read.
 4. For `References`, a broken package that depends on the declaring package is
    scanned with the type information the checker produced; identifiers it could
    not resolve are not found. It gets the log line
@@ -60,7 +61,11 @@ var ErrBrokenPackage = errors.New("a package that may use the symbol has errors"
    broken package may hold an implementation. Each is scanned as in rule 4 and
    gets the same best-effort log line.
 6. Log lines are emitted once per package ID, in `packages.Visit` order, before
-   the result is returned. The result slices and their sorting are unchanged.
+   the result is returned. The result slices and their sorting are unchanged. A
+   broken package that should be scanned best effort but has no type information
+   at all gets the ignoring line instead. Rules 3 to 5 consider the packages the
+   patterns match and their test variants; the declaring package counts wherever
+   it appears in the import graph.
 
 ### refactor (amends stage 4 rule 1)
 
@@ -71,8 +76,11 @@ var ErrBrokenPackage = errors.New("a package that may use the symbol has errors"
    `ErrBrokenPackage` that names the package; nothing is written. These are the
    packages a rewrite could miss or corrupt.
 9. Every other broken package is ignored with the log line
-   `refactor: ignoring package %s: %v`. Interfaces declared in an ignored
-   package are not considered for `ErrBreaksInterface`.
+   `refactor: ignoring package %s: %v`, emitted only when the call proceeds. An
+   ignored package is never scanned, so an interface declared in it cannot
+   trigger `ErrBreaksInterface` (see stage 4 rule 22). Rules 8 and 9 consider
+   the packages the patterns match and their test variants; the source and
+   destination packages count wherever they appear in the import graph.
 10. The final build is unchanged: only the directories of written files are
     built, so an ignored package is never built.
 
@@ -83,9 +91,11 @@ var ErrBrokenPackage = errors.New("a package that may use the symbol has errors"
 12. Otherwise, broken packages and every loaded package that depends on one are
     excluded from the analysis. A broken package gets the log line
     `deadcode: ignoring package %s: %v`; a dependent gets
-    `deadcode: ignoring package %s: it imports broken package %s`. Excluded
+    `deadcode: ignoring package %s: it imports broken package %s`, naming the
+    first broken package reached through its imports in import path order. Excluded
     main packages are not roots; when no root remains the call wraps
-    `ErrNoRoots`. Functions of excluded packages are never listed. A function
+    `ErrNoRoots` with the message
+    `deadcode: <root>: every matched package is broken or imports a broken package: <ErrNoRoots>`. Functions of excluded packages are never listed. A function
     that only excluded packages reach is listed as dead; the log lines are the
     warning that the result is incomplete.
 13. `Orphaned` forwards `Options` unchanged to both `Dead` calls, so log lines

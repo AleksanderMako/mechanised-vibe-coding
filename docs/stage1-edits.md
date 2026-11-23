@@ -108,8 +108,8 @@ Validation, in `Check` and at the start of `Apply`:
 Writing, in `Apply` after validation passed:
 
 7. Every touched file is written with its final in memory content. File mode is preserved.
-8. Unless `NoFormat`, each touched file ending in `.go` is passed through `golang.org/x/tools/imports.Process` with default options and written again if the result differs. A formatting error (the edited file does not parse) is treated like a build failure: files are restored and a `*BuildError` is returned with the parse error in `Output` and the file's package directory in `Packages`.
-9. Unless `NoBuild`, the set of directories holding touched `.go` files is built with `go build` run from `Root` with `GOFLAGS=-mod=mod` unset and the environment inherited, one `go build` call listing all directories as `./relative/path` arguments. Files named `*_test.go` count as touching their directory and the directory is built with `go vet` instead of `go build` so test files are compiled too. Non-zero exit is a `*BuildError` with the full combined output and the directories listed.
+8. Unless `NoFormat`, each touched file ending in `.go` is passed through `golang.org/x/tools/imports.Process` with default options and written again if the result differs. A formatting error (the edited file does not parse) is treated like a build failure, even with `NoBuild`: files are restored and a `*BuildError` is returned with every parse error joined in `Output` and the failing files' package directories, sorted and unique, in `Packages`.
+9. Unless `NoBuild`, the directories holding touched `.go` files are built from `Root` with the inherited environment: one `go build -o /dev/null ./dir ...` call for the directories without a touched `_test.go` file (so a main package never leaves a binary behind), and one `go vet ./dir ...` call for the directories with one, so test files are compiled too. A non-zero exit is a `*BuildError` with the full combined output and the directories of the failing call listed; the output cannot be attributed to a single directory.
 10. Restoration means writing back the exact original bytes of every touched file. Files that did not exist cannot be touched (validation rejects them), so no file is ever deleted.
 11. `Result.Touched` lists every written file once, in the order of the first edit that touched it. `Result.Packages` lists the built directories sorted.
 12. A cancelled context stops before writing if cancellation is observed during validation, and is passed to the `go` command otherwise.
@@ -208,25 +208,25 @@ General:
 `AddTableCase`:
 
 6. The target function is the top level `func testFunc(...)`; a method is not a target. Missing is `ErrNotFound`.
-7. Inside the function body, including nested blocks, the candidate tables are composite literals whose type is written as `[]struct{...}` or `[]Name` or `map[...]struct{...}` on the right hand side of a `:=` or `=` statement, or as the `range` expression directly. Exactly one candidate must exist; zero is `ErrNotFound`, more is `ErrAmbiguous`.
-8. `caseSrc` must parse as a single composite literal expression (parsed by wrapping it as `_ = T{ <caseSrc> }` in a scratch file and taking the first element). Failure is `ErrBadSource`. For a map table, `caseSrc` is a `key: value` pair and is parsed the same way.
-9. The new element is appended as the last element on its own line, keeping the table's one-element-per-line layout, with its comments preserved.
+7. Inside the function body, including nested blocks, the candidate tables are composite literals whose type is written as `[]struct{...}`, `[]Name` or `[]pkg.Name` with a non-predeclared element type (so `[]string{...}` arguments are not tables), or `map[...]struct{...}`, on the right hand side of a `:=` or `=` statement, or as the `range` expression directly. Exactly one candidate must exist; zero is `ErrNotFound`, more is `ErrAmbiguous`.
+8. `caseSrc` must parse as exactly one composite literal element: it is wrapped over several lines as `_ = T{\n<caseSrc>,\n}` with the comma placed after the last token and before any trailing comment, so a case ending in `// comment` is fine. Anything but one element, or a non-literal element for a slice table, is `ErrBadSource`. For a map table the element is a `key: value` pair.
+9. The new element is appended as the last element on its own line with its comments preserved; every existing element is put on its own line too, so a one-line table becomes multi-line.
 
 `AddStructField`:
 
 10. `typeName` must name a top level `type X struct{...}`. Missing is `ErrNotFound`. A type that is not a struct is `ErrNotFound`.
 11. `fieldSrc` must parse as one struct field (parsed inside `struct{ <fieldSrc> }`), with a name, type and optional tag, possibly with a trailing line comment. Failure is `ErrBadSource`. Embedded fields (no name) are allowed.
-12. A field of the same name already present is `ErrExists`. `after` naming a field that does not exist is `ErrNotFound`.
+12. Checks run in this order: the snippet parses (`ErrBadSource`), the name is new (`ErrExists`), `after` exists (`ErrNotFound`).
 
 `RemoveStructField`:
 
-13. Same type lookup as 10. A missing field is `ErrNotFound`. Removing the field also removes its doc and line comments. A struct field list left empty is written as `struct{}`.
+13. Same type lookup as 10. A missing field is `ErrNotFound`. Removing the field also removes its doc and line comments. In a multi-name field `A, B int` only the name is removed and the line stays. A struct field list left empty is written as `struct{}`.
 
 `SetDoc`:
 
 14. `symbol` resolves to a top level `func`, a `type`, or a `var`/`const` spec, or to a method `Type.Method` with pointer or value receiver. Missing is `ErrNotFound`. For a `var`/`const` in a grouped declaration the doc of the spec is set; for a single declaration the doc of the declaration is set.
 15. Each line of `doc` becomes `// ` plus the line; an empty line becomes `//`. Existing doc comment lines are removed first. Comments that are not doc comments (line comments after the symbol, comments inside the body) are kept.
-16. An empty `doc` removes the doc comment and is not an error when there was none.
+16. An empty `doc` removes the doc comment and is not an error when there was none. A `SetDoc` that changes nothing (same doc, or empty doc with none present) is a no-op and the file is not written. More than one matching symbol, such as several `init` functions, is `ErrAmbiguous`. `//go:` and `//line` directives in the doc block are kept after the new doc.
 
 `SetConst`:
 
@@ -236,7 +236,7 @@ General:
 
 `AddConformance`:
 
-20. `typeName` must be a top level type declaration of any kind. Missing is `ErrNotFound`.
+20. `typeName` must be a top level type declaration of any kind. Missing is `ErrNotFound`. An `ifaceSrc` that does not parse as a type is `ErrBadSource`.
 21. The inserted declaration is `var _ <ifaceSrc> = (*<typeName>)(nil)` as its own top level `var` directly after the type's declaration group, with a blank line before and after.
 22. No-op detection compares against every existing top level `var _ ... = ...` spec after formatting whitespace away: same interface text and same `(*Type)(nil)` value. On no-op the file is not written and not listed in the result.
 

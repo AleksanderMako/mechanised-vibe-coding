@@ -59,12 +59,12 @@ var ErrNoRoots = errors.New("no main packages or tests to use as roots")
 `Dead`:
 
 1. `Root` without `go.mod` is an ordinary error. Packages are loaded with `golang.org/x/tools/go/packages` including tests when `Tests`, built into SSA with `golang.org/x/tools/go/ssa/ssautil`, and reachability is computed with `golang.org/x/tools/go/callgraph/rta` from the roots.
-2. Roots are every `main.main` and every `init` of the loaded packages, plus, when `Tests`, every `Test*`, `Benchmark*`, `Fuzz*` and `Example*` function of the test packages, and the generated test main.
-3. No roots at all wraps `ErrNoRoots`; this is what a library module without tests gives.
+2. Roots are every `main.main` and every `init` of the loaded packages, plus, when `Tests`, every `Test*`, `Benchmark*`, `Fuzz*` and `Example*` function declared in `_test.go` files, and the generated test main. `init` and `func _` declarations are never listed as dead.
+3. No `main.main` and no test root wraps `ErrNoRoots`, even when the packages have `init` functions; this is what a library module without tests gives. A pattern matching no packages is an ordinary error.
 4. Load or type errors are ordinary errors naming the first one.
-5. A function is dead when it is declared in source in one of the loaded packages (not a dependency, not synthetic, not a generic instantiation) and is not reachable. Methods are reported with `Name` `Type.Method`. Anonymous functions are reported through their enclosing function only: an unreachable enclosing function is listed, its literals are not.
+5. A function is dead when it is declared in source in one of the loaded packages (not a dependency, not synthetic, not a generic instantiation) and is not reachable. With `Tests`, the package and its test variant are the same package: a function reached in either copy is live, a dead one is listed once with the plain import path. Methods are reported with `Name` `Type.Method`. Anonymous functions are reported through their enclosing function only: an unreachable enclosing function is listed, its literals are not.
 6. Generic functions count as reachable when any instantiation is reachable.
-7. `File` is relative to `Root`, `Line` is the line of the `func` keyword.
+7. `File` is relative to `Root` (symlinks resolved) with forward slashes, `Line` is the line of the `func` keyword. Ties in sorting are broken by `Name`.
 
 `Orphaned`:
 

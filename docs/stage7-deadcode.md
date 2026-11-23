@@ -75,7 +75,7 @@ var ErrNoRoots = errors.New("no main packages or tests to use as roots")
 
 ### Reference tool
 
-12. `golang.org/x/tools/cmd/deadcode` (v0.53.0) is the oracle. On any module, the set of `Package`, `Name`, `File` and `Line` that `Dead` returns equals what `deadcode -generated ./...` prints (and `deadcode -generated -test ./...` for `Options.Tests`), after mapping the reference's `pkg/file.go:LINE:COL: unreachable func: Name` lines to the same fields. `Dead` always includes generated files; the reference hides them unless `-generated` is given.
+12. `golang.org/x/tools/cmd/deadcode` (v0.53.0) is the oracle. On any module, the set of `Package`, `Name`, `File` and `Line` that `Dead` returns equals what `deadcode -generated ./...` prints (and `deadcode -generated -test ./...` for `Options.Tests`), after mapping the reference's `pkg/file.go:LINE:COL: unreachable func: Name` lines to the same fields. `Dead` always includes generated files; the reference hides them unless `-generated` is given. The equivalence holds for `./...` only: with narrower `Patterns`, `Dead` reports just the matched packages (rule 5) while the reference also reports their dependencies inside the module.
 13. The test suite contains an opt-in oracle test: when the environment variable `MVC_DEADCODE_REFERENCE` holds the path of a `deadcode` binary, the test runs it on every fixture module with `-generated` (and `-test` where the fixture is also analysed with `Tests`) and fails on any difference with `Dead`. Without the variable the test is skipped, so the ordinary suite needs no download.
 
 ### Out of scope

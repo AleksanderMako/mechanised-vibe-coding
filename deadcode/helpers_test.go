@@ -27,6 +27,21 @@ const (
 	testOnlyFile = "lib/testonly.go"
 )
 
+// A test file for the libonly fixture whose only test calls Helper, so tests alone give the module a root.
+const (
+	libonlyTestFile    = "libonly_test.go"
+	libonlyTestContent = `package libonly
+
+import "testing"
+
+func TestHelper(t *testing.T) {
+	if Helper() != 1 {
+		t.Fatal("Helper changed")
+	}
+}
+`
+)
+
 // copyFixture copies testdata/<name> into a fresh temp dir and returns its symlink free absolute path.
 func copyFixture(t *testing.T, name string) string {
 	t.Helper()

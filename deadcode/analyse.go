@@ -58,20 +58,12 @@ func analyse(ctx context.Context, root string, opts Options) ([]Func, error) {
 
 	program, ssaPackages := ssautil.AllPackages(loaded, ssa.InstantiateGenerics)
 	sources := collectSourceFuncs(program, loaded)
+	interfacesByPackage := collectInterfaces(loaded)
 	program.Build()
 
 	roots := findRoots(loaded, ssaPackages, opts.Tests)
 	if len(roots) == 0 {
 		return nil, fmt.Errorf("deadcode: %s: %w", root, ErrNoRoots)
-	}
-	// Every package initializer runs before main, so all of them are roots as well.
-	for _, ssaPackage := range ssaPackages {
-		if ssaPackage == nil {
-			continue
-		}
-		if initializer := ssaPackage.Func("init"); initializer != nil {
-			roots = append(roots, initializer)
-		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -100,6 +92,10 @@ func analyse(ctx context.Context, root string, opts Options) ([]Func, error) {
 			continue
 		}
 		reported[position] = true
+		// Like cmd/deadcode, the first unreachable copy decides, and marker methods are hidden.
+		if isMarkerMethod(source, interfacesByPackage[source.function.Pkg.Pkg]) {
+			continue
+		}
 		declarationPosition := fileSet.Position(source.declaration.Pos())
 		dead = append(dead, Func{
 			Package: source.packagePath,
@@ -146,7 +142,7 @@ func firstPackageError(loaded []*packages.Package) error {
 // It runs before program.Build so it can still use the syntax trees.
 func collectSourceFuncs(program *ssa.Program, loaded []*packages.Package) []sourceFunc {
 	sources := []sourceFunc{}
-	for _, pkg := range loaded {
+	for _, pkg := range inVisitOrder(loaded) {
 		// The generated test main lives in the build cache and holds no code of ours.
 		if strings.HasSuffix(pkg.ID, ".test") {
 			continue
@@ -154,8 +150,8 @@ func collectSourceFuncs(program *ssa.Program, loaded []*packages.Package) []sour
 		for _, file := range pkg.Syntax {
 			for _, declaration := range file.Decls {
 				funcDecl, isFunc := declaration.(*ast.FuncDecl)
-				// init functions always run, and blank functions can never be called.
-				if !isFunc || funcDecl.Name.Name == "init" || funcDecl.Name.Name == "_" {
+				// init and blank functions stay in: cmd/deadcode lists them when nothing reaches them.
+				if !isFunc {
 					continue
 				}
 				object, isFuncObject := pkg.TypesInfo.Defs[funcDecl.Name].(*types.Func)
@@ -173,8 +169,58 @@ func collectSourceFuncs(program *ssa.Program, loaded []*packages.Package) []sour
 	return sources
 }
 
-// findRoots returns the main functions and, when tests count, the test functions and test mains.
-// Package initializers are added by the caller because on their own they do not make a program.
+// inVisitOrder returns the loaded packages in the dependency-first order cmd/deadcode walks them.
+// The order decides which test variant copy of a declaration is judged, which matters for marker methods.
+func inVisitOrder(loaded []*packages.Package) []*packages.Package {
+	isLoaded := map[*packages.Package]bool{}
+	for _, pkg := range loaded {
+		isLoaded[pkg] = true
+	}
+	ordered := []*packages.Package{}
+	packages.Visit(loaded, nil, func(pkg *packages.Package) {
+		if isLoaded[pkg] {
+			ordered = append(ordered, pkg)
+		}
+	})
+	return ordered
+}
+
+// collectInterfaces lists, per loaded package, the interface types declared at package level.
+func collectInterfaces(loaded []*packages.Package) map[*types.Package][]*types.Interface {
+	interfacesByPackage := map[*types.Package][]*types.Interface{}
+	for _, pkg := range loaded {
+		scope := pkg.Types.Scope()
+		for _, name := range scope.Names() {
+			typeName, isTypeName := scope.Lookup(name).(*types.TypeName)
+			if isTypeName && types.IsInterface(typeName.Type()) {
+				interfacesByPackage[pkg.Types] = append(interfacesByPackage[pkg.Types], typeName.Type().Underlying().(*types.Interface))
+			}
+		}
+	}
+	return interfacesByPackage
+}
+
+// isMarkerMethod reports whether source is an unexported, empty, parameterless method that satisfies
+// an interface of its own package, like protoc's isOneof_Field; cmd/deadcode never reports those.
+func isMarkerMethod(source sourceFunc, interfaces []*types.Interface) bool {
+	signature := source.function.Signature
+	if signature.Recv() == nil || ast.IsExported(source.function.Name()) || signature.Params() != nil || signature.Results() != nil {
+		return false
+	}
+	body := source.declaration.Body
+	if body == nil || len(body.List) > 0 {
+		return false
+	}
+	for _, iface := range interfaces {
+		if types.Implements(signature.Recv().Type(), iface) {
+			return true
+		}
+	}
+	return false
+}
+
+// findRoots returns main and init of every main package (test mains included) and, when tests count, the test functions.
+// Other packages' initializers are reached through the init of whoever imports them, as in cmd/deadcode.
 func findRoots(loaded []*packages.Package, ssaPackages []*ssa.Package, includeTests bool) []*ssa.Function {
 	roots := []*ssa.Function{}
 	for index, pkg := range loaded {
@@ -185,6 +231,9 @@ func findRoots(loaded []*packages.Package, ssaPackages []*ssa.Package, includeTe
 		if ssaPackage.Pkg.Name() == "main" {
 			if mainFunction := ssaPackage.Func("main"); mainFunction != nil {
 				roots = append(roots, mainFunction)
+				if initializer := ssaPackage.Func("init"); initializer != nil {
+					roots = append(roots, initializer)
+				}
 			}
 		}
 		if !includeTests || !isTestVariant(pkg) {
@@ -219,6 +268,7 @@ func isTestRoot(function *ssa.Function, fileSet *token.FileSet) bool {
 }
 
 // displayName returns "Name" for a function and "Type.Method" for a method, without pointer or type arguments.
+// An init function keeps its SSA name such as "init#1", the way cmd/deadcode prints it.
 func displayName(function *ssa.Function) string {
 	object, isFuncObject := function.Object().(*types.Func)
 	if !isFuncObject {
@@ -226,7 +276,7 @@ func displayName(function *ssa.Function) string {
 	}
 	receiver := object.Signature().Recv()
 	if receiver == nil {
-		return object.Name()
+		return function.Name()
 	}
 	receiverType := receiver.Type()
 	if pointer, isPointer := receiverType.(*types.Pointer); isPointer {

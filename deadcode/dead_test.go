@@ -10,7 +10,7 @@ import (
 	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
 )
 
-// deadWithoutTests is every function of the module fixture that main and init do not reach (rules 2, 5, 6).
+// deadWithoutTests is every function of the module fixture that main, and the init of the lib it imports, do not reach (rules 2, 5, 6).
 func deadWithoutTests(t *testing.T, root string) []deadcode.Func {
 	t.Helper()
 	return sortLikeDead([]deadcode.Func{
@@ -69,8 +69,8 @@ func TestDeadReportsLiveFunctionsNowhere(t *testing.T) {
 	// Each of these is reached from main, from init, through a closure, or through a generic instantiation.
 	live := []struct{ packagePath, name, why string }{
 		{appPackage, "main", "main is a root"},
-		{libPackage, "init", "init is a root"},
-		{libPackage, "calledFromInit", "only init calls it"},
+		{libPackage, "init", "main imports lib, so its init runs"},
+		{libPackage, "calledFromInit", "only lib's init calls it, and main imports lib"},
 		{libPackage, "Live", "main calls it"},
 		{libPackage, "Soon", "main calls it"},
 		{libPackage, "Widget.Used", "main calls the method"},
@@ -186,16 +186,7 @@ func TestDeadLibraryWithoutMainOrTestsHasNoRoots(t *testing.T) {
 
 func TestDeadLibraryTestsAloneAreRoots(t *testing.T) {
 	root := copyFixture(t, "libonly")
-	writeFile(t, root, "libonly_test.go", `package libonly
-
-import "testing"
-
-func TestHelper(t *testing.T) {
-	if Helper() != 1 {
-		t.Fatal("Helper changed")
-	}
-}
-`)
+	writeFile(t, root, libonlyTestFile, libonlyTestContent)
 	got, err := deadcode.Dead(t.Context(), root, deadcode.Options{Tests: true})
 	if err != nil {
 		t.Fatalf("Dead with Tests: %v", err)

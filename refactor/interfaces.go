@@ -29,6 +29,10 @@ func (w *workspace) brokenInterface(typeName *types.TypeName, methodName string)
 			continue
 		}
 		for _, iface := range usedInterfaces(pkg) {
+			// Stage 9 rule 9: an interface declared in an ignored broken package does not count.
+			if w.ignored[iface.Obj().Pkg()] {
+				continue
+			}
 			underlying := iface.Underlying().(*types.Interface)
 			if !hasMethodNamed(underlying, methodName, typePackage.Path()) {
 				continue

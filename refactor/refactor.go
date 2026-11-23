@@ -12,8 +12,10 @@ import (
 
 // Options controls loading and the final build.
 type Options struct {
-	Patterns []string // package patterns relative to Root; empty means ./...
-	NoBuild  bool     // skip the build after writing
+	Patterns []string                         // package patterns relative to Root; empty means ./...
+	NoBuild  bool                             // skip the build after writing
+	Strict   bool                             // any broken package is an error, the behaviour before stage 9
+	Logf     func(format string, args ...any) // one line per tolerated broken package; nil means silent
 }
 
 // Sentinel errors, wrapped in the returned errors.
@@ -24,6 +26,7 @@ var (
 	ErrLeftBehind      = errors.New("moved code depends on unexported symbols left behind")
 	ErrBreaksInterface = errors.New("the type would stop satisfying an interface")
 	ErrBadName         = errors.New("not a valid Go identifier")
+	ErrBrokenPackage   = errors.New("a package that may use the symbol has errors")
 )
 
 // Rename renames sym everywhere it is declared and used.

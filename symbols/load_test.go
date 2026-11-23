@@ -57,7 +57,8 @@ func TestTypeErrorFailsTheWholeCallAndNamesThePackage(t *testing.T) {
 	good := func(name string) symbols.Symbol {
 		return symbols.Symbol{Package: "example.com/broken/good", Name: name}
 	}
-	errs := callAll(t, root, good("Fine"), good("Sizer"), good("Box"), symbols.Options{})
+	// Stage 9 made failing on any broken package the Strict behaviour.
+	errs := callAll(t, root, good("Fine"), good("Sizer"), good("Box"), symbols.Options{Strict: true})
 	for function, err := range errs {
 		if err == nil {
 			t.Errorf("%s on a module with a type error: want error", function)

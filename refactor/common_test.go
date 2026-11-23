@@ -18,23 +18,23 @@ type operation struct {
 	run     func(root string) ([]string, error)
 }
 
-// validOperations are requests that succeed on an intact fixture copy.
-func validOperations() []operation {
+// validOperations are requests that succeed on an intact fixture copy, run with opts.
+func validOperations(opts refactor.Options) []operation {
 	return []operation{
 		{"Rename", "rename", func(root string) ([]string, error) {
-			return refactor.Rename(context.Background(), root, sym("shapes", "Area"), "Surface", refactor.Options{})
+			return refactor.Rename(context.Background(), root, sym("shapes", "Area"), "Surface", opts)
 		}},
 		{"Move", "move", func(root string) ([]string, error) {
-			return refactor.Move(context.Background(), root, []symbols.Symbol{sym("store", "Pad")}, importPath("util"), "util.go", refactor.Options{})
+			return refactor.Move(context.Background(), root, []symbols.Symbol{sym("store", "Pad")}, importPath("util"), "util.go", opts)
 		}},
 		{"Demethodize", "demethodize", func(root string) ([]string, error) {
-			return refactor.Demethodize(context.Background(), root, sym("calc", "Adder.Sum"), "", refactor.Options{})
+			return refactor.Demethodize(context.Background(), root, sym("calc", "Adder.Sum"), "", opts)
 		}},
 	}
 }
 
 func TestRule1_RootWithoutGoModIsAnError(t *testing.T) {
-	for _, op := range validOperations() {
+	for _, op := range validOperations(refactor.Options{}) {
 		t.Run(op.name, func(t *testing.T) {
 			root := t.TempDir()
 			writeFile(t, root, "main.go", "package main\n\nfunc main() {}\n")
@@ -77,7 +77,8 @@ func TestRule1_UnknownSymbolWrapsErrNotFound(t *testing.T) {
 }
 
 func TestRule1_TypeErrorInModuleWritesNothing(t *testing.T) {
-	for _, op := range validOperations() {
+	// Stage 9 made failing on any broken package the Strict behaviour.
+	for _, op := range validOperations(refactor.Options{Strict: true}) {
 		t.Run(op.name, func(t *testing.T) {
 			root := copyFixture(t, op.fixture)
 			writeFile(t, root, "broken/broken.go", "package broken\n\nvar count int = \"not a number\"\n")

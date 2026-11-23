@@ -14,31 +14,35 @@ var deadGroup = group{
 	actions: []action{
 		{
 			name:     "list",
-			synopsis: "-root DIR [-pkg P]... [-tests] [-json]",
+			synopsis: "-root DIR [-pkg P]... [-tests] [-strict] [-json]",
 			help: `Lists the unreachable functions, one per line as PACKAGE<TAB>NAME<TAB>FILE:LINE.
-Any dead function exits 1; with -json the []deadcode.Func, still exit 1.`,
+Any dead function exits 1; with -json the []deadcode.Func, still exit 1.
+A package that does not compile, and every package importing it, is left out
+with a "mvc: warning:" line on stderr; -strict makes any such package an error.`,
 			setup: setupDeadList,
 		},
 		{
 			name:     "orphaned",
-			synopsis: "-root DIR [-pkg P]... [-tests] [-json] BEFORE [AFTER]",
+			synopsis: "-root DIR [-pkg P]... [-tests] [-strict] [-json] BEFORE [AFTER]",
 			help: `Compares dead functions at git revisions BEFORE and AFTER; without AFTER the
 working tree is used. Prints a "newly dead:" line followed by the newly dead
 functions, then a "revived:" line followed by the revived ones, each as
 PACKAGE<TAB>NAME<TAB>FILE:LINE. Any newly dead function exits 1; with -json
-the deadcode.Diff, still exit 1.`,
+the deadcode.Diff, still exit 1. Broken packages are left out with warnings
+as in dead list, possibly once per revision; -strict makes them an error.`,
 			setup: setupDeadOrphaned,
 		},
 	},
 }
 
 // addDeadFlags registers the flags both dead actions share.
-func addDeadFlags(flags *flag.FlagSet) (root *string, packages *listFlag, tests, asJSON *bool) {
+func addDeadFlags(flags *flag.FlagSet) (root *string, packages *listFlag, tests, strict, asJSON *bool) {
 	root = addRootFlag(flags)
 	packages = addPackagesFlag(flags)
 	tests = flags.Bool("tests", false, "treat test functions as roots too")
+	strict = addStrictFlag(flags)
 	asJSON = addJSONFlag(flags)
-	return root, packages, tests, asJSON
+	return root, packages, tests, strict, asJSON
 }
 
 func printFuncs(funcs []deadcode.Func) {
@@ -48,7 +52,7 @@ func printFuncs(funcs []deadcode.Func) {
 }
 
 func setupDeadList(flags *flag.FlagSet) func(context.Context, []string) error {
-	root, packages, tests, asJSON := addDeadFlags(flags)
+	root, packages, tests, strict, asJSON := addDeadFlags(flags)
 	return func(ctx context.Context, args []string) error {
 		if len(args) != 0 {
 			return usageErrorf("unexpected arguments: %v", args)
@@ -57,7 +61,7 @@ func setupDeadList(flags *flag.FlagSet) func(context.Context, []string) error {
 		if err != nil {
 			return err
 		}
-		dead, err := deadcode.Dead(ctx, absolute, deadcode.Options{Patterns: *packages, Tests: *tests})
+		dead, err := deadcode.Dead(ctx, absolute, deadcode.Options{Patterns: *packages, Tests: *tests, Strict: *strict, Logf: warn})
 		if err != nil {
 			return err
 		}
@@ -76,7 +80,7 @@ func setupDeadList(flags *flag.FlagSet) func(context.Context, []string) error {
 }
 
 func setupDeadOrphaned(flags *flag.FlagSet) func(context.Context, []string) error {
-	root, packages, tests, asJSON := addDeadFlags(flags)
+	root, packages, tests, strict, asJSON := addDeadFlags(flags)
 	return func(ctx context.Context, args []string) error {
 		if len(args) != 1 && len(args) != 2 {
 			return usageErrorf("want BEFORE and an optional AFTER revision, got %d arguments", len(args))
@@ -90,7 +94,7 @@ func setupDeadOrphaned(flags *flag.FlagSet) func(context.Context, []string) erro
 		if err != nil {
 			return err
 		}
-		options := deadcode.Options{Patterns: *packages, Tests: *tests}
+		options := deadcode.Options{Patterns: *packages, Tests: *tests, Strict: *strict, Logf: warn}
 		diff, err := deadcode.Orphaned(ctx, absolute, args[0], after, options)
 		if err != nil {
 			return err

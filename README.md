@@ -23,7 +23,7 @@ about Go modules and git, nothing about any one project.
 | 6     | `mergeinfo` | Classify merge conflicts: enclosing declarations, deletions, their commits.  |
 | 7     | `deadcode`  | What a change orphaned: whole module reachability before and after.          |
 | 8     | `cmd/mvc`   | One command, one subcommand per package.                                     |
-
+| 9     | tolerance   | Broken packages no longer block `symbols`, `refactor` and `dead`; `-strict` restores the old behaviour. |
 ## Usage
 
 ```sh
@@ -46,6 +46,9 @@ mvc dead orphaned main
 `mvc <group> <action> -h` the flags and output format. Exit code `0` is
 success, `1` a negative result such as a failed check or dead code found, `2`
 a usage or other error. `-json` prints the package result type and nothing else.
+`symbols`, `refactor` and `dead` tolerate packages that do not compile where the
+result cannot depend on them and print one `mvc: warning:` line per such package
+on stderr; `-strict` turns any broken package back into an error.
 
 ## How it is built
 

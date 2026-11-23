@@ -12,12 +12,14 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/AleksanderMako/machanised-vibe-coding/internal/brokenpkg"
 	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
 )
 
 // loadMode asks for syntax and full type information of the matched packages;
 // dependencies come from export data, which is enough to resolve their objects.
-const loadMode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
+// NeedImports keeps the import graph go/packages builds anyway, to tell which broken packages depend on the source.
+const loadMode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports |
 	packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedModule
 
 // workspace holds the type checked packages one operation works on.
@@ -25,15 +27,19 @@ type workspace struct {
 	root       string // absolute module root
 	modulePath string // module path from go.mod
 	fileSet    *token.FileSet
-	packages   []*packages.Package // matched packages and their test variants, without generated test mains
+	packages   []*packages.Package     // matched packages and their test variants, without generated test mains
+	ignored    map[*types.Package]bool // types of broken packages left out, whose interfaces must not count
 }
 
-// load type checks the packages matched by patterns under root and fails on any package error.
-func load(ctx context.Context, root string, patterns []string) (*workspace, error) {
+// load type checks the packages matched by opts under root. With opts.Strict any package error fails;
+// otherwise only a broken package the rewrite could miss or corrupt does: one declaring a symbol
+// in sourcePaths, one depending on those, or the destination package of a move.
+func load(ctx context.Context, root string, opts Options, sourcePaths []string, destinationPath string) (*workspace, error) {
 	absoluteRoot, err := checkRoot(root)
 	if err != nil {
 		return nil, err
 	}
+	patterns := opts.Patterns
 	if len(patterns) == 0 {
 		patterns = []string{"./..."}
 	}
@@ -52,16 +58,28 @@ func load(ctx context.Context, root string, patterns []string) (*workspace, erro
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	// A broken package means type information is incomplete, so nothing may be rewritten.
-	for _, pkg := range loaded {
-		if len(pkg.Errors) > 0 {
-			return nil, fmt.Errorf("refactor: package %s: %v", pkg.ID, pkg.Errors[0])
+	if opts.Strict {
+		// A broken package means type information is incomplete, so nothing may be rewritten.
+		for _, pkg := range loaded {
+			if brokenpkg.IsBroken(pkg) {
+				return nil, fmt.Errorf("refactor: package %s: %v", pkg.ID, pkg.Errors[0])
+			}
 		}
 	}
-	result := &workspace{root: absoluteRoot, fileSet: fileSet}
+	ignored, err := ignoredPackages(loaded, opts, sourcePaths, destinationPath)
+	if err != nil {
+		return nil, err
+	}
+	result := &workspace{root: absoluteRoot, fileSet: fileSet, ignored: map[*types.Package]bool{}}
 	for _, pkg := range loaded {
 		// The generated test main lives in the build cache and only calls the test functions.
 		if strings.HasSuffix(pkg.ID, ".test") {
+			continue
+		}
+		if ignored[pkg] {
+			if pkg.Types != nil {
+				result.ignored[pkg.Types] = true
+			}
 			continue
 		}
 		if pkg.Types == nil || pkg.TypesInfo == nil {
@@ -79,6 +97,56 @@ func load(ctx context.Context, root string, patterns []string) (*workspace, erro
 		}
 	}
 	return result, nil
+}
+
+// ignoredPackages returns the broken matched packages that cannot affect the rewrite, logging each,
+// or an error wrapping ErrBrokenPackage when a broken package can.
+func ignoredPackages(loaded []*packages.Package, opts Options, sourcePaths []string, destinationPath string) (map[*packages.Package]bool, error) {
+	ignored := map[*packages.Package]bool{}
+	if opts.Strict {
+		return ignored, nil
+	}
+	isSource := map[string]bool{}
+	for _, path := range sourcePaths {
+		isSource[path] = true
+	}
+	isMatched := map[*packages.Package]bool{}
+	for _, pkg := range loaded {
+		isMatched[pkg] = !strings.HasSuffix(pkg.ID, ".test")
+	}
+	byID := brokenpkg.IndexByID(loaded)
+	var tolerated []*packages.Package
+	for _, pkg := range brokenpkg.InVisitOrder(loaded) {
+		if !brokenpkg.IsBroken(pkg) {
+			continue
+		}
+		// The source and destination count even when only reached as a dependency of the patterns.
+		if isSource[pkg.PkgPath] || (destinationPath != "" && pkg.PkgPath == destinationPath) {
+			return nil, brokenPackageError(pkg)
+		}
+		if !isMatched[pkg] {
+			continue
+		}
+		for _, path := range sourcePaths {
+			if brokenpkg.DependsOn(pkg, path, byID) {
+				return nil, brokenPackageError(pkg)
+			}
+		}
+		tolerated = append(tolerated, pkg)
+	}
+	// Log only once the call is known to go ahead, so a failing call prints just its error.
+	for _, pkg := range tolerated {
+		if opts.Logf != nil {
+			opts.Logf("refactor: ignoring package %s: %v", pkg.ID, pkg.Errors[0])
+		}
+		ignored[pkg] = true
+	}
+	return ignored, nil
+}
+
+// brokenPackageError names pkg and its first error and wraps ErrBrokenPackage.
+func brokenPackageError(pkg *packages.Package) error {
+	return fmt.Errorf("refactor: package %s: %w: %v", pkg.ID, ErrBrokenPackage, pkg.Errors[0])
 }
 
 // checkRoot returns root as an absolute path after making sure it holds a go.mod.

@@ -10,11 +10,14 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/packages"
+
+	"github.com/AleksanderMako/machanised-vibe-coding/internal/brokenpkg"
 )
 
 // loadMode asks for syntax and full type information of the matched packages only;
 // dependencies come from export data, which is enough to resolve their objects.
-const loadMode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
+// NeedImports keeps the import graph go/packages builds anyway, to tell which broken packages depend on a symbol.
+const loadMode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports |
 	packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedModule
 
 // loadResult holds the packages one call works on.
@@ -22,9 +25,11 @@ type loadResult struct {
 	root     string // absolute module root
 	fileSet  *token.FileSet
 	packages []*packages.Package // the matched packages and their test variants, without generated test mains
+	matched  []*packages.Package // everything packages.Load returned, the roots of the import graph
+	broken   []*packages.Package // the broken packages among packages, in packages.Visit order
 }
 
-// load type checks the packages matched by opts under root and fails on any package error.
+// load type checks the packages matched by opts under root; with opts.Strict it fails on any package error.
 func load(ctx context.Context, root string, opts Options) (*loadResult, error) {
 	absoluteRoot, err := checkRoot(root)
 	if err != nil {
@@ -49,16 +54,23 @@ func load(ctx context.Context, root string, opts Options) (*loadResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	// Report the first broken package so no partial answer is ever returned.
-	for _, pkg := range loaded {
-		if len(pkg.Errors) > 0 {
-			return nil, fmt.Errorf("symbols: package %s: %v", pkg.ID, pkg.Errors[0])
+	if opts.Strict {
+		// Report the first broken package so no partial answer is ever returned.
+		for _, pkg := range loaded {
+			if brokenpkg.IsBroken(pkg) {
+				return nil, fmt.Errorf("symbols: package %s: %v", pkg.ID, pkg.Errors[0])
+			}
 		}
 	}
-	result := &loadResult{root: absoluteRoot, fileSet: fileSet}
+	result := &loadResult{root: absoluteRoot, fileSet: fileSet, matched: loaded}
+	isMatched := map[*packages.Package]bool{}
 	for _, pkg := range loaded {
 		// The generated test main lives in the build cache and only calls the test functions.
 		if strings.HasSuffix(pkg.ID, ".test") {
+			continue
+		}
+		isMatched[pkg] = true
+		if brokenpkg.IsBroken(pkg) {
 			continue
 		}
 		if pkg.Types == nil || pkg.TypesInfo == nil {
@@ -66,7 +78,52 @@ func load(ctx context.Context, root string, opts Options) (*loadResult, error) {
 		}
 		result.packages = append(result.packages, pkg)
 	}
+	// Broken packages join the scanned ones only after tolerate decided they may hold results.
+	for _, pkg := range brokenpkg.InVisitOrder(loaded) {
+		if isMatched[pkg] && brokenpkg.IsBroken(pkg) {
+			result.broken = append(result.broken, pkg)
+		}
+	}
 	return result, nil
+}
+
+// scanPolicy says which broken packages one lookup scans for its result.
+type scanPolicy int
+
+const (
+	scanNone       scanPolicy = iota // StructTags reads only the declaring package
+	scanDependents                   // References: only packages that import the declaring package can use the symbol
+	scanAll                          // Implementations: satisfying an interface needs no import
+)
+
+// tolerate applies stage 9 to the broken packages: the declaring package must be sound,
+// the others are scanned as best effort or ignored per policy, each with one log line.
+func (l *loadResult) tolerate(sym Symbol, policy scanPolicy, opts Options) error {
+	// In strict mode load already failed on every broken package.
+	if opts.Strict {
+		return nil
+	}
+	for _, pkg := range brokenpkg.InVisitOrder(l.matched) {
+		if pkg.PkgPath == sym.Package && brokenpkg.IsBroken(pkg) {
+			return fmt.Errorf("symbols: package %s: %v", pkg.ID, pkg.Errors[0])
+		}
+	}
+	logf := opts.Logf
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
+	byID := brokenpkg.IndexByID(l.matched)
+	for _, pkg := range l.broken {
+		scan := policy == scanAll || (policy == scanDependents && brokenpkg.DependsOn(pkg, sym.Package, byID))
+		// A package that failed before type checking has nothing to scan.
+		if scan && pkg.Types != nil && pkg.TypesInfo != nil {
+			logf("symbols: package %s has errors, results there are best effort: %v", pkg.ID, pkg.Errors[0])
+			l.packages = append(l.packages, pkg)
+			continue
+		}
+		logf("symbols: ignoring package %s: %v", pkg.ID, pkg.Errors[0])
+	}
+	return nil
 }
 
 // checkRoot returns root as an absolute path after making sure it holds a go.mod.

@@ -21,8 +21,10 @@ func (f Func) Key() string { return f.Package + "." + f.Name }
 
 // Options controls the analysis.
 type Options struct {
-	Patterns []string // package patterns relative to Root; empty means ./...
-	Tests    bool     // treat test functions as roots too
+	Patterns []string                         // package patterns relative to Root; empty means ./...
+	Tests    bool                             // treat test functions as roots too
+	Strict   bool                             // any broken package is an error, the behaviour before stage 9
+	Logf     func(format string, args ...any) // one line per tolerated broken package; nil means silent
 }
 
 // Dead lists the functions of the loaded packages that no root reaches.

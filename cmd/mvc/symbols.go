@@ -8,7 +8,7 @@ import (
 	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
 )
 
-const symbolArgHelp = `SYMBOL is "import/path.Name" or "import/path.Type.Member".`
+const symbolArgHelp = `SYMBOL is "import/path.Name" or "import/path.Type.Member".` + brokenPackageHelp
 
 var symbolsGroup = group{
 	name:    "symbols",
@@ -16,7 +16,7 @@ var symbolsGroup = group{
 	actions: []action{
 		{
 			name:     "refs",
-			synopsis: "-root DIR [-pkg P]... [-no-tests] [-json] SYMBOL",
+			synopsis: "-root DIR [-pkg P]... [-no-tests] [-strict] [-json] SYMBOL",
 			help: `Lists every use of SYMBOL except its declaration, one per line as
 FILE:LINE:COL<TAB>KIND<TAB>CONTEXT. With -json the []symbols.Reference.
 ` + symbolArgHelp,
@@ -24,14 +24,14 @@ FILE:LINE:COL<TAB>KIND<TAB>CONTEXT. With -json the []symbols.Reference.
 		},
 		{
 			name:     "impls",
-			synopsis: "-root DIR [-pkg P]... [-no-tests] [-json] IFACE",
+			synopsis: "-root DIR [-pkg P]... [-no-tests] [-strict] [-json] IFACE",
 			help: `Lists the named types that satisfy interface IFACE, one per line as
 import/path.Name. With -json the []symbols.Symbol. ` + symbolArgHelp,
 			setup: setupSymbolsImpls,
 		},
 		{
 			name:     "tags",
-			synopsis: "-root DIR [-pkg P]... [-json] TYPE",
+			synopsis: "-root DIR [-pkg P]... [-strict] [-json] TYPE",
 			help: `Lists the fields of struct TYPE in declaration order, one per line as
 FIELD<TAB>TYPE<TAB>TAG with the raw tag (empty when none). With -json the
 []symbols.FieldTag. ` + symbolArgHelp,
@@ -39,6 +39,11 @@ FIELD<TAB>TYPE<TAB>TAG with the raw tag (empty when none). With -json the
 		},
 	},
 }
+
+// brokenPackageHelp explains -strict and the warnings in the help of every action that has it.
+const brokenPackageHelp = `
+A package that does not compile is tolerated where possible, with one
+"mvc: warning:" line on stderr; -strict makes any such package an error.`
 
 // addPackagesFlag registers the repeatable -pkg flag shared by the loading actions.
 func addPackagesFlag(flags *flag.FlagSet) *listFlag {
@@ -59,6 +64,7 @@ func setupSymbolsRefs(flags *flag.FlagSet) func(context.Context, []string) error
 	root := addRootFlag(flags)
 	packages := addPackagesFlag(flags)
 	noTests := flags.Bool("no-tests", false, "leave _test.go files out")
+	strict := addStrictFlag(flags)
 	asJSON := addJSONFlag(flags)
 	return func(ctx context.Context, args []string) error {
 		symbol, err := parseOneSymbol(args)
@@ -69,7 +75,7 @@ func setupSymbolsRefs(flags *flag.FlagSet) func(context.Context, []string) error
 		if err != nil {
 			return err
 		}
-		options := symbols.Options{Patterns: *packages, ExcludeTests: *noTests}
+		options := symbols.Options{Patterns: *packages, ExcludeTests: *noTests, Strict: *strict, Logf: warn}
 		references, err := symbols.References(ctx, absolute, symbol, options)
 		if err != nil {
 			return err
@@ -88,6 +94,7 @@ func setupSymbolsImpls(flags *flag.FlagSet) func(context.Context, []string) erro
 	root := addRootFlag(flags)
 	packages := addPackagesFlag(flags)
 	noTests := flags.Bool("no-tests", false, "leave _test.go files out")
+	strict := addStrictFlag(flags)
 	asJSON := addJSONFlag(flags)
 	return func(ctx context.Context, args []string) error {
 		iface, err := parseOneSymbol(args)
@@ -98,7 +105,7 @@ func setupSymbolsImpls(flags *flag.FlagSet) func(context.Context, []string) erro
 		if err != nil {
 			return err
 		}
-		options := symbols.Options{Patterns: *packages, ExcludeTests: *noTests}
+		options := symbols.Options{Patterns: *packages, ExcludeTests: *noTests, Strict: *strict, Logf: warn}
 		implementations, err := symbols.Implementations(ctx, absolute, iface, options)
 		if err != nil {
 			return err
@@ -116,6 +123,7 @@ func setupSymbolsImpls(flags *flag.FlagSet) func(context.Context, []string) erro
 func setupSymbolsTags(flags *flag.FlagSet) func(context.Context, []string) error {
 	root := addRootFlag(flags)
 	packages := addPackagesFlag(flags)
+	strict := addStrictFlag(flags)
 	asJSON := addJSONFlag(flags)
 	return func(ctx context.Context, args []string) error {
 		typ, err := parseOneSymbol(args)
@@ -126,7 +134,7 @@ func setupSymbolsTags(flags *flag.FlagSet) func(context.Context, []string) error
 		if err != nil {
 			return err
 		}
-		fields, err := symbols.StructTags(ctx, absolute, typ, symbols.Options{Patterns: *packages})
+		fields, err := symbols.StructTags(ctx, absolute, typ, symbols.Options{Patterns: *packages, Strict: *strict, Logf: warn})
 		if err != nil {
 			return err
 		}

@@ -14,6 +14,8 @@ import (
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
+
+	"github.com/AleksanderMako/machanised-vibe-coding/internal/brokenpkg"
 )
 
 // testRootPrefixes are the function name prefixes the go test driver calls.
@@ -52,8 +54,19 @@ func analyse(ctx context.Context, root string, opts Options) ([]Func, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := firstPackageError(loaded); err != nil {
-		return nil, err
+	if opts.Strict {
+		if err := firstPackageError(loaded); err != nil {
+			return nil, err
+		}
+	} else {
+		if len(loaded) == 0 {
+			return nil, fmt.Errorf("deadcode: no packages matched")
+		}
+		// ssautil must never see an ill-typed package or a dependent of one, or building may panic.
+		loaded = withoutBrokenPackages(loaded, opts.Logf)
+		if len(loaded) == 0 {
+			return nil, fmt.Errorf("deadcode: %s: every matched package is broken or imports a broken package: %w", root, ErrNoRoots)
+		}
 	}
 
 	program, ssaPackages := ssautil.AllPackages(loaded, ssa.InstantiateGenerics)
@@ -136,6 +149,33 @@ func firstPackageError(loaded []*packages.Package) error {
 		first = fmt.Errorf("deadcode: no packages matched")
 	}
 	return first
+}
+
+// withoutBrokenPackages drops the matched packages that are broken or depend on a broken package,
+// logging one line for every such package of the whole import graph in packages.Visit order.
+func withoutBrokenPackages(loaded []*packages.Package, logf func(format string, args ...any)) []*packages.Package {
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
+	ordered := brokenpkg.InVisitOrder(loaded)
+	brokenVia := brokenpkg.BrokenDependencies(ordered)
+	for _, pkg := range ordered {
+		via, excluded := brokenVia[pkg]
+		switch {
+		case !excluded:
+		case via == pkg.ID:
+			logf("deadcode: ignoring package %s: %v", pkg.ID, pkg.Errors[0])
+		default:
+			logf("deadcode: ignoring package %s: it imports broken package %s", pkg.ID, via)
+		}
+	}
+	kept := []*packages.Package{}
+	for _, pkg := range loaded {
+		if _, excluded := brokenVia[pkg]; !excluded {
+			kept = append(kept, pkg)
+		}
+	}
+	return kept
 }
 
 // collectSourceFuncs lists the named functions and methods declared in the loaded packages.

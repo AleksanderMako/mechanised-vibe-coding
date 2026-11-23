@@ -51,8 +51,10 @@ func ParseSymbol(s string) (Symbol, error) {
 
 // Options controls loading. The zero value loads ./... with tests.
 type Options struct {
-	Patterns     []string // package patterns relative to Root; empty means ./...
-	ExcludeTests bool     // leave _test.go files out
+	Patterns     []string                         // package patterns relative to Root; empty means ./...
+	ExcludeTests bool                             // leave _test.go files out
+	Strict       bool                             // any broken package is an error, the behaviour before stage 9
+	Logf         func(format string, args ...any) // one line per tolerated broken package; nil means silent
 }
 
 // Kind says how a reference uses the symbol.
@@ -91,6 +93,9 @@ func References(ctx context.Context, root string, sym Symbol, opts Options) ([]R
 	if err != nil {
 		return nil, err
 	}
+	if err := loaded.tolerate(sym, scanDependents, opts); err != nil {
+		return nil, err
+	}
 	target, err := loaded.resolve(sym)
 	if err != nil {
 		return nil, err
@@ -102,6 +107,9 @@ func References(ctx context.Context, root string, sym Symbol, opts Options) ([]R
 func Implementations(ctx context.Context, root string, iface Symbol, opts Options) ([]Symbol, error) {
 	loaded, err := load(ctx, root, opts)
 	if err != nil {
+		return nil, err
+	}
+	if err := loaded.tolerate(iface, scanAll, opts); err != nil {
 		return nil, err
 	}
 	object, err := loaded.resolve(iface)
@@ -129,6 +137,9 @@ type FieldTag struct {
 func StructTags(ctx context.Context, root string, typ Symbol, opts Options) ([]FieldTag, error) {
 	loaded, err := load(ctx, root, opts)
 	if err != nil {
+		return nil, err
+	}
+	if err := loaded.tolerate(typ, scanNone, opts); err != nil {
 		return nil, err
 	}
 	object, err := loaded.resolve(typ)

@@ -153,7 +153,8 @@ func TestDeadWithoutGoModIsAnError(t *testing.T) {
 func TestDeadTypeErrorIsAnError(t *testing.T) {
 	root := copyFixture(t, "module")
 	writeFile(t, root, "lib/broken.go", "package lib\n\nfunc Broken() int {\n\treturn \"not a number\"\n}\n")
-	_, err := deadcode.Dead(t.Context(), root, deadcode.Options{})
+	// Stage 9 made failing on any broken package the Strict behaviour.
+	_, err := deadcode.Dead(t.Context(), root, deadcode.Options{Strict: true})
 	if err == nil {
 		t.Fatal("want an error for a package with a type error, got nil")
 	}
@@ -165,7 +166,8 @@ func TestDeadTypeErrorIsAnError(t *testing.T) {
 func TestDeadSyntaxErrorIsAnError(t *testing.T) {
 	root := copyFixture(t, "module")
 	writeFile(t, root, "lib/broken.go", "package lib\n\nfunc Broken( {\n")
-	_, err := deadcode.Dead(t.Context(), root, deadcode.Options{})
+	// Stage 9 made failing on any broken package the Strict behaviour.
+	_, err := deadcode.Dead(t.Context(), root, deadcode.Options{Strict: true})
 	if err == nil {
 		t.Fatal("want an error for a package that does not parse, got nil")
 	}

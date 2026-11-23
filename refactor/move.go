@@ -63,7 +63,7 @@ func move(ctx context.Context, root string, syms []symbols.Symbol, toImportPath,
 	if err := checkFileName(toFile); err != nil {
 		return nil, err
 	}
-	work, err := load(ctx, root, opts.Patterns)
+	work, err := load(ctx, root, opts, []string{sourcePath}, toImportPath)
 	if err != nil {
 		return nil, err
 	}

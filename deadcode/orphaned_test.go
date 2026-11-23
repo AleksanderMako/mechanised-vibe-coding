@@ -240,7 +240,8 @@ func TestOrphanedRemovesWorktreesWhenARevisionDoesNotBuild(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.label, func(t *testing.T) {
-			_, err := deadcode.Orphaned(t.Context(), root, testCase.beforeRef, testCase.afterRef, deadcode.Options{})
+			// Strict keeps the broken revision a real error; since stage 9 it would otherwise be ErrNoRoots.
+			_, err := deadcode.Orphaned(t.Context(), root, testCase.beforeRef, testCase.afterRef, deadcode.Options{Strict: true})
 			if err == nil {
 				t.Fatal("want an error when a revision has a type error, got nil")
 			}

@@ -27,7 +27,7 @@ func demethodize(ctx context.Context, root string, method symbols.Symbol, newNam
 	if newName != "" && !isValidName(newName) {
 		return nil, fmt.Errorf("refactor: %q: %w", newName, ErrBadName)
 	}
-	work, err := load(ctx, root, opts.Patterns)
+	work, err := load(ctx, root, opts, []string{method.Package}, "")
 	if err != nil {
 		return nil, err
 	}

@@ -202,6 +202,16 @@ func addJSONFlag(flags *flag.FlagSet) *bool {
 	return flags.Bool("json", false, "print the result as indented JSON")
 }
 
+// addStrictFlag registers -strict for the actions that tolerate broken packages (stage 9 rule 14).
+func addStrictFlag(flags *flag.FlagSet) *bool {
+	return flags.Bool("strict", false, "fail on any package with errors instead of tolerating the ones that cannot change the result")
+}
+
+// warn prints one tolerated broken package line to stderr, so stdout and the exit code stay untouched.
+func warn(format string, args ...any) {
+	fmt.Fprintln(os.Stderr, "mvc: warning: "+oneLine(fmt.Sprintf(format, args...)))
+}
+
 // absRoot resolves -root to an absolute path so packages never see a relative root.
 func absRoot(root string) (string, error) {
 	return filepath.Abs(root)

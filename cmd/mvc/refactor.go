@@ -11,7 +11,7 @@ import (
 const refactorHelpSuffix = `
 Prints the written files one per line; with -json a JSON array of strings.
 Every error, such as a name conflict or a failed build, goes to stderr with
-exit 2. Symbols are "import/path.Name" or "import/path.Type.Member".`
+exit 2. Symbols are "import/path.Name" or "import/path.Type.Member".` + brokenPackageHelp
 
 var refactorGroup = group{
 	name:    "refactor",
@@ -19,19 +19,19 @@ var refactorGroup = group{
 	actions: []action{
 		{
 			name:     "rename",
-			synopsis: "-root DIR [-pkg P]... [-no-build] [-json] SYMBOL NEWNAME",
+			synopsis: "-root DIR [-pkg P]... [-no-build] [-strict] [-json] SYMBOL NEWNAME",
 			help:     "Renames SYMBOL to NEWNAME everywhere it is declared and used." + refactorHelpSuffix,
 			setup:    setupRefactorRename,
 		},
 		{
 			name:     "move",
-			synopsis: "-root DIR [-pkg P]... [-no-build] [-json] -to IMPORTPATH -to-file FILE SYMBOL...",
+			synopsis: "-root DIR [-pkg P]... [-no-build] [-strict] [-json] -to IMPORTPATH -to-file FILE SYMBOL...",
 			help:     "Moves top level SYMBOLs of one package into FILE of package IMPORTPATH." + refactorHelpSuffix,
 			setup:    setupRefactorMove,
 		},
 		{
 			name:     "demethodize",
-			synopsis: "-root DIR [-pkg P]... [-no-build] [-json] TYPE.METHOD [NEWNAME]",
+			synopsis: "-root DIR [-pkg P]... [-no-build] [-strict] [-json] TYPE.METHOD [NEWNAME]",
 			help: `Turns method TYPE.METHOD (written import/path.Type.Method) into a package
 level function named NEWNAME, the method name when omitted.` + refactorHelpSuffix,
 			setup: setupRefactorDemethodize,
@@ -40,12 +40,13 @@ level function named NEWNAME, the method name when omitted.` + refactorHelpSuffi
 }
 
 // addRefactorFlags registers the flags every refactor action shares.
-func addRefactorFlags(flags *flag.FlagSet) (root *string, packages *listFlag, noBuild, asJSON *bool) {
+func addRefactorFlags(flags *flag.FlagSet) (root *string, packages *listFlag, noBuild, strict, asJSON *bool) {
 	root = addRootFlag(flags)
 	packages = addPackagesFlag(flags)
 	noBuild = flags.Bool("no-build", false, "skip the build after writing")
+	strict = addStrictFlag(flags)
 	asJSON = addJSONFlag(flags)
-	return root, packages, noBuild, asJSON
+	return root, packages, noBuild, strict, asJSON
 }
 
 // printWritten prints the files a refactor wrote as lines or as a JSON array.
@@ -58,7 +59,7 @@ func printWritten(written []string, asJSON bool) error {
 }
 
 func setupRefactorRename(flags *flag.FlagSet) func(context.Context, []string) error {
-	root, packages, noBuild, asJSON := addRefactorFlags(flags)
+	root, packages, noBuild, strict, asJSON := addRefactorFlags(flags)
 	return func(ctx context.Context, args []string) error {
 		if len(args) != 2 {
 			return usageErrorf("want SYMBOL and NEWNAME, got %d arguments", len(args))
@@ -71,7 +72,7 @@ func setupRefactorRename(flags *flag.FlagSet) func(context.Context, []string) er
 		if err != nil {
 			return err
 		}
-		options := refactor.Options{Patterns: *packages, NoBuild: *noBuild}
+		options := refactor.Options{Patterns: *packages, NoBuild: *noBuild, Strict: *strict, Logf: warn}
 		written, err := refactor.Rename(ctx, absolute, symbol, args[1], options)
 		if err != nil {
 			return err
@@ -81,7 +82,7 @@ func setupRefactorRename(flags *flag.FlagSet) func(context.Context, []string) er
 }
 
 func setupRefactorMove(flags *flag.FlagSet) func(context.Context, []string) error {
-	root, packages, noBuild, asJSON := addRefactorFlags(flags)
+	root, packages, noBuild, strict, asJSON := addRefactorFlags(flags)
 	toImportPath := flags.String("to", "", "destination package `IMPORTPATH`")
 	toFile := flags.String("to-file", "", "destination `FILE` name inside that package")
 	return func(ctx context.Context, args []string) error {
@@ -103,7 +104,7 @@ func setupRefactorMove(flags *flag.FlagSet) func(context.Context, []string) erro
 		if err != nil {
 			return err
 		}
-		options := refactor.Options{Patterns: *packages, NoBuild: *noBuild}
+		options := refactor.Options{Patterns: *packages, NoBuild: *noBuild, Strict: *strict, Logf: warn}
 		written, err := refactor.Move(ctx, absolute, moving, *toImportPath, *toFile, options)
 		if err != nil {
 			return err
@@ -113,7 +114,7 @@ func setupRefactorMove(flags *flag.FlagSet) func(context.Context, []string) erro
 }
 
 func setupRefactorDemethodize(flags *flag.FlagSet) func(context.Context, []string) error {
-	root, packages, noBuild, asJSON := addRefactorFlags(flags)
+	root, packages, noBuild, strict, asJSON := addRefactorFlags(flags)
 	return func(ctx context.Context, args []string) error {
 		if len(args) != 1 && len(args) != 2 {
 			return usageErrorf("want TYPE.METHOD and an optional NEWNAME, got %d arguments", len(args))
@@ -131,7 +132,7 @@ func setupRefactorDemethodize(flags *flag.FlagSet) func(context.Context, []strin
 		if err != nil {
 			return err
 		}
-		options := refactor.Options{Patterns: *packages, NoBuild: *noBuild}
+		options := refactor.Options{Patterns: *packages, NoBuild: *noBuild, Strict: *strict, Logf: warn}
 		written, err := refactor.Demethodize(ctx, absolute, method, newName, options)
 		if err != nil {
 			return err

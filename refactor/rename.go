@@ -28,7 +28,7 @@ func rename(ctx context.Context, root string, sym symbols.Symbol, newName string
 	if !isValidName(newName) {
 		return nil, fmt.Errorf("refactor: %q: %w", newName, ErrBadName)
 	}
-	work, err := load(ctx, root, opts.Patterns)
+	work, err := load(ctx, root, opts, []string{sym.Package}, "")
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // callSite is one call of the method that will become a function call.

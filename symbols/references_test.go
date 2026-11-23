@@ -3,7 +3,7 @@ package symbols_test
 import (
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // referencesOf runs References on a fresh copy of the main fixture and fails on error.

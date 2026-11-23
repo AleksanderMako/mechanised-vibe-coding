@@ -3,7 +3,7 @@ package symbols_test
 import (
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 func TestParseSymbolSplitsPackageAndName(t *testing.T) {

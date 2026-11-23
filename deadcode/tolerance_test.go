@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
 )
 
 // Import paths of the stage 9 tolerance fixture packages.

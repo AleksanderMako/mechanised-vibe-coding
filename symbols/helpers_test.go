@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // fixtureModulePath is the module path declared in testdata/module/go.mod.

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // Import paths of the stage 9 tolerance fixture packages.

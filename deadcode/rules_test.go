@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
 )
 
 // Import paths and files of the initroots fixture: main imports registry and, for its init only, plugin; nothing imports orphan.

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/verify"
+	"github.com/AleksanderMako/mechanised-vibe-coding/verify"
 )
 
 // Source files the Run tests write into the temp module at run time, so the repo itself stays clean.

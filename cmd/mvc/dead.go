@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
 )
 
 var deadGroup = group{

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/editset"
+	"github.com/AleksanderMako/mechanised-vibe-coding/editset"
 )
 
 // assertBuildError checks err is a *BuildError naming mustInclude and nothing outside allowed.

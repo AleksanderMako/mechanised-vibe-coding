@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/astedit"
+	"github.com/AleksanderMako/mechanised-vibe-coding/astedit"
 )
 
 func TestOpFileEchoesInputAndDescribeIsOneLine(t *testing.T) {

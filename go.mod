@@ -1,4 +1,4 @@
-module github.com/AleksanderMako/machanised-vibe-coding
+module github.com/AleksanderMako/mechanised-vibe-coding
 
 go 1.26.0
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/verify"
+	"github.com/AleksanderMako/mechanised-vibe-coding/verify"
 )
 
 // verifyStepLine is rule 5's NAME\tOK|FAIL|SKIP\tDURATION.

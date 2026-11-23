@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/editset"
+	"github.com/AleksanderMako/mechanised-vibe-coding/editset"
 )
 
 func TestRule13_ParseJSONValidInput(t *testing.T) {

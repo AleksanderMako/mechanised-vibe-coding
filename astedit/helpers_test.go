@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/astedit"
+	"github.com/AleksanderMako/mechanised-vibe-coding/astedit"
 )
 
 // copyFixture copies testdata/<name> into a fresh temp dir and returns its symlink free absolute path.

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/envcheck"
+	"github.com/AleksanderMako/mechanised-vibe-coding/envcheck"
 )
 
 // checkVars is a hand built config: one required, one duplicated name, one missing twice, one provided empty.

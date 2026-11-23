@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/verify"
+	"github.com/AleksanderMako/mechanised-vibe-coding/verify"
 )
 
 func TestRule19_NoVendorDirectoryReturnsFalse(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/editset"
-	"github.com/AleksanderMako/machanised-vibe-coding/refactor"
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/editset"
+	"github.com/AleksanderMako/mechanised-vibe-coding/refactor"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // operation runs one of the three refactorings against a fixture root.

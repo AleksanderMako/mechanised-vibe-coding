@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/refactor"
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/refactor"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 func TestRule17To20_DemethodizeNamedUnusedReceiver(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/mergeinfo"
+	"github.com/AleksanderMako/mechanised-vibe-coding/mergeinfo"
 )
 
 // greetFunc is the function both sides of most scenarios fight over; it starts on line 3 of baseApp.

@@ -15,7 +15,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // movedUnit is one declaration, or one spec lifted out of a group, that moves.

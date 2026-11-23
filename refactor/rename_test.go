@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/refactor"
+	"github.com/AleksanderMako/mechanised-vibe-coding/refactor"
 )
 
 func TestRule6_RenameFunctionRewritesDeclarationAndEveryUse(t *testing.T) {

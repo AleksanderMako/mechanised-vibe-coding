@@ -3,7 +3,7 @@ package deadcode_test
 import (
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
 )
 
 // Edits that move lib.Abandoned, lib.Soon and lib.Later down the file so File and Line show which revision they came from.

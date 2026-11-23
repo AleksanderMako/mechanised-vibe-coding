@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // implementationsOf runs Implementations on a fresh copy of the main fixture and fails on error.

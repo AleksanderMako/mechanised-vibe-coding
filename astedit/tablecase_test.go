@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/astedit"
+	"github.com/AleksanderMako/mechanised-vibe-coding/astedit"
 )
 
 // tableIn returns the single typed slice or map literal in the body of the top level test function.

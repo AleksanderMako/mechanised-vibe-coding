@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // Options controls loading and the final build.

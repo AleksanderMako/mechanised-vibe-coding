@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/envcheck"
+	"github.com/AleksanderMako/mechanised-vibe-coding/envcheck"
 )
 
 // configSource is a config package whose struct reads APP_HOST and APP_PORT.

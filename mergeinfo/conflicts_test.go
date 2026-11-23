@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/mergeinfo"
+	"github.com/AleksanderMako/mechanised-vibe-coding/mergeinfo"
 )
 
 // conflictsOf runs Conflicts on root and fails the test on error.

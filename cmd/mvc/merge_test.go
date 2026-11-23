@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/mergeinfo"
+	"github.com/AleksanderMako/mechanised-vibe-coding/mergeinfo"
 )
 
 // greetingFile returns a small Go file whose single return line both branches change.

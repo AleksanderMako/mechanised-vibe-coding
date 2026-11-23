@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/mergeinfo"
+	"github.com/AleksanderMako/mechanised-vibe-coding/mergeinfo"
 )
 
 // declSource has a declaration of every kind rule 9 names; the comment after each line is its line number.

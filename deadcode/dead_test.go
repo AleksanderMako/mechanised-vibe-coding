@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
 )
 
 // deadWithoutTests is every function of the module fixture that main, and the init of the lib it imports, do not reach (rules 2, 5, 6).

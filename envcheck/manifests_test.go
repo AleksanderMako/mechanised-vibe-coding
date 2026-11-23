@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/envcheck"
+	"github.com/AleksanderMako/mechanised-vibe-coding/envcheck"
 )
 
 // Rules 9 and 10: workload kinds are read, Service and ConfigMap are skipped, one source per container.

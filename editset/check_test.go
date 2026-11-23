@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/editset"
+	"github.com/AleksanderMako/mechanised-vibe-coding/editset"
 )
 
 // wantProblem is the part of a Problem a test can predict; Count is only compared where the contract defines it.

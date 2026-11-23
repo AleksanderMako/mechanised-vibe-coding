@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 const symbolArgHelp = `SYMBOL is "import/path.Name" or "import/path.Type.Member".` + brokenPackageHelp

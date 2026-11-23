@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/refactor"
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/refactor"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 const refactorHelpSuffix = `

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/mergeinfo"
+	"github.com/AleksanderMako/mechanised-vibe-coding/mergeinfo"
 )
 
 // greetConflictEdits returns edits that make both sides rewrite the same line of Greet differently.

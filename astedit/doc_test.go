@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/astedit"
+	"github.com/AleksanderMako/mechanised-vibe-coding/astedit"
 )
 
 func TestRules14to15_SetDoc(t *testing.T) {

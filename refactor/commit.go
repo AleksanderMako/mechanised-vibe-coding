@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/tools/imports"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/editset"
+	"github.com/AleksanderMako/mechanised-vibe-coding/editset"
 )
 
 // fileChange is one file before and after an operation.

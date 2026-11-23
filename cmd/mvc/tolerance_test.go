@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // Symbols and packages of the tolerance fixture: stale is broken and unrelated, brokenuser is broken and calls lib.Hello.

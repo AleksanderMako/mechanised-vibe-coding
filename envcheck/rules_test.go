@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/envcheck"
+	"github.com/AleksanderMako/mechanised-vibe-coding/envcheck"
 )
 
 // sharedSecret is a value that must never appear in a Distinct violation.

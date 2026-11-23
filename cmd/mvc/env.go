@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/envcheck"
+	"github.com/AleksanderMako/mechanised-vibe-coding/envcheck"
 )
 
 var envGroup = group{

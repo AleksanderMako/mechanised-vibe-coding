@@ -1,4 +1,4 @@
-# machanised-vibe-coding
+# mechanised-vibe-coding
 
 Deterministic Go tooling for the clerical parts of agent assisted development.
 Every tool here replaces a step where a language model was slow, or wrong, or
@@ -27,7 +27,7 @@ about Go modules and git, nothing about any one project.
 ## Usage
 
 ```sh
-go install github.com/AleksanderMako/machanised-vibe-coding/cmd/mvc@latest
+go install github.com/AleksanderMako/mechanised-vibe-coding/cmd/mvc@latest
 
 # check a batch of text edits without writing, edits read from stdin
 mvc edit check -root . - < edits.json

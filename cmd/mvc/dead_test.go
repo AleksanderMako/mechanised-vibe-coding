@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
 )
 
 // mainCalling returns cmd/app/main.go calling only the given fixture packages, each exporting a capitalised function.

@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/editset"
+	"github.com/AleksanderMako/mechanised-vibe-coding/editset"
 )
 
 var editGroup = group{

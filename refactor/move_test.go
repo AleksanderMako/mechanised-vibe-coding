@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/refactor"
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/refactor"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 func TestRule11And15_MoveIntoNewPackage(t *testing.T) {

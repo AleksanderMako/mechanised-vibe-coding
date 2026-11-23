@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/mergeinfo"
+	"github.com/AleksanderMako/mechanised-vibe-coding/mergeinfo"
 )
 
 var mergeGroup = group{

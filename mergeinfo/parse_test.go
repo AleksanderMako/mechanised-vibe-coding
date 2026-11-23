@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/mergeinfo"
+	"github.com/AleksanderMako/mechanised-vibe-coding/mergeinfo"
 )
 
 // parseSorted runs ParseHunks, fails on error, and orders hunks by Start so tests do not depend on report order.

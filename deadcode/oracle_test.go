@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/deadcode"
+	"github.com/AleksanderMako/mechanised-vibe-coding/deadcode"
 )
 
 // referenceBinaryVariable names the environment variable holding the path of a golang.org/x/tools/cmd/deadcode binary.

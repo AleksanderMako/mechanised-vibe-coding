@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // referenceLine is rule 5's FILE:LINE:COL\tKIND\tCONTEXT.

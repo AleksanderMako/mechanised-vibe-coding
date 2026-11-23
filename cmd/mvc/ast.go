@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/astedit"
+	"github.com/AleksanderMako/mechanised-vibe-coding/astedit"
 )
 
 const astHelpSuffix = `

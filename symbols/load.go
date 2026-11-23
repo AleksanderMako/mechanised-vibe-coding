@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/internal/brokenpkg"
+	"github.com/AleksanderMako/mechanised-vibe-coding/internal/brokenpkg"
 )
 
 // loadMode asks for syntax and full type information of the matched packages only;

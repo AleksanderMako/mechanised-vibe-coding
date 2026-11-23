@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/verify"
+	"github.com/AleksanderMako/mechanised-vibe-coding/verify"
 )
 
 var verifyGroup = group{

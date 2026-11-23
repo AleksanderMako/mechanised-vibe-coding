@@ -3,7 +3,7 @@ package envcheck_test
 import (
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/envcheck"
+	"github.com/AleksanderMako/mechanised-vibe-coding/envcheck"
 )
 
 // Rules 6, 7 and 8: comments, export, quotes, escapes, trailing comments and duplicate keys.

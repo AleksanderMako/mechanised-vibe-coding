@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/verify"
+	"github.com/AleksanderMako/mechanised-vibe-coding/verify"
 )
 
 func TestOrder_IsTheFixedStepOrder(t *testing.T) {

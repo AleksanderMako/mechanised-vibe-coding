@@ -15,7 +15,7 @@ import (
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/internal/brokenpkg"
+	"github.com/AleksanderMako/mechanised-vibe-coding/internal/brokenpkg"
 )
 
 // testRootPrefixes are the function name prefixes the go test driver calls.

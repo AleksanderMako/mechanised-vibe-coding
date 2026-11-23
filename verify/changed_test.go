@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/verify"
+	"github.com/AleksanderMako/mechanised-vibe-coding/verify"
 )
 
 // goSource returns a small formatted Go file for package name.

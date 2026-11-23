@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/AleksanderMako/machanised-vibe-coding/symbols"
+	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
 // structTagsOf runs StructTags on a fresh copy of the main fixture and fails on error.

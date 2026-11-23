@@ -35,8 +35,8 @@ type Options struct {
 }
 
 // Dead lists the functions of the loaded packages that no root reaches. Roots are
-// the main functions and init functions of the loaded packages, and the tests when
-// Options.Tests. Sorted by Package, then File, then Line.
+// main and init of the main packages, and the tests when Options.Tests; other
+// packages are reached only through their importers. Sorted by Package, then File, then Line.
 func Dead(ctx context.Context, root string, opts Options) ([]Func, error)
 
 // Diff is what changed between two revisions.
@@ -59,10 +59,10 @@ var ErrNoRoots = errors.New("no main packages or tests to use as roots")
 `Dead`:
 
 1. `Root` without `go.mod` is an ordinary error. Packages are loaded with `golang.org/x/tools/go/packages` including tests when `Tests`, built into SSA with `golang.org/x/tools/go/ssa/ssautil`, and reachability is computed with `golang.org/x/tools/go/callgraph/rta` from the roots.
-2. Roots are every `main.main` and every `init` of the loaded packages, plus, when `Tests`, every `Test*`, `Benchmark*`, `Fuzz*` and `Example*` function declared in `_test.go` files, and the generated test main. `init` and `func _` declarations are never listed as dead.
+2. Roots are `main.main` and `init` of every main package among the loaded packages, plus, when `Tests`, every `Test*`, `Benchmark*`, `Fuzz*` and `Example*` function declared in `_test.go` files and the generated test main. The `init` of a non-main package is not a root: it is reached only through an importer, exactly as `golang.org/x/tools/cmd/deadcode` does it, so a package that no root imports is entirely dead, including whatever its `init` would have run (proto type registration, for example). `init` and `func _` declarations are never listed as dead.
 3. No `main.main` and no test root wraps `ErrNoRoots`, even when the packages have `init` functions; this is what a library module without tests gives. A pattern matching no packages is an ordinary error.
 4. Load or type errors are ordinary errors naming the first one.
-5. A function is dead when it is declared in source in one of the loaded packages (not a dependency, not synthetic, not a generic instantiation) and is not reachable. With `Tests`, the package and its test variant are the same package: a function reached in either copy is live, a dead one is listed once with the plain import path. Methods are reported with `Name` `Type.Method`. Anonymous functions are reported through their enclosing function only: an unreachable enclosing function is listed, its literals are not.
+5. A function is dead when it is declared in source in one of the loaded packages (not a dependency, not synthetic, not a generic instantiation) and is not reachable. With `Tests`, the package and its test variant are the same package: a function reached in either copy is live, a dead one is listed once with the plain import path. Methods are reported with `Name` `Type.Method`. Anonymous functions are reported through their enclosing function only: an unreachable enclosing function is listed, its literals are not. Marker methods are never listed: an unexported method with no parameters, no results and an empty body whose receiver type implements some named interface type declared in the same package. This is the marker rule of `cmd/deadcode`; it hides protoc's `isOneof_Field` and `mustEmbedUnimplemented...Server` methods, which exist only to satisfy an interface.
 6. Generic functions count as reachable when any instantiation is reachable.
 7. `File` is relative to `Root` (symlinks resolved) with forward slashes, `Line` is the line of the `func` keyword. Ties in sorting are broken by `Name`.
 
@@ -72,6 +72,11 @@ var ErrNoRoots = errors.New("no main packages or tests to use as roots")
 9. `afterRef` empty means `Root` itself is analysed as it stands. Non-empty is handled like `beforeRef`.
 10. `Dead` runs at both with the same `Options`. `NewlyDead` and `Revived` are computed on `Key()` and sorted like `Dead` output. `File` and `Line` in those slices come from the revision where the function is dead.
 11. A function dead in both revisions appears in neither delta.
+
+### Reference tool
+
+12. `golang.org/x/tools/cmd/deadcode` (v0.53.0) is the oracle. On any module, the set of `Package`, `Name`, `File` and `Line` that `Dead` returns equals what `deadcode -generated ./...` prints (and `deadcode -generated -test ./...` for `Options.Tests`), after mapping the reference's `pkg/file.go:LINE:COL: unreachable func: Name` lines to the same fields. `Dead` always includes generated files; the reference hides them unless `-generated` is given.
+13. The test suite contains an opt-in oracle test: when the environment variable `MVC_DEADCODE_REFERENCE` holds the path of a `deadcode` binary, the test runs it on every fixture module with `-generated` (and `-test` where the fixture is also analysed with `Tests`) and fails on any difference with `Dead`. Without the variable the test is skipped, so the ordinary suite needs no download.
 
 ### Out of scope
 

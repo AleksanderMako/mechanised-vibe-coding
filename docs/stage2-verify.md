@@ -93,8 +93,8 @@ func Flaky(ctx context.Context, root, pkg, test string, runs int, race bool) (Fl
 
 Setup, in `Run`:
 
-1. `Root` empty or not a directory containing `go.mod` is an ordinary error.
-2. With `Packages` empty, `ChangedPackages` is used. When that is also empty, the packages are `["./..."]`.
+1. `Root` empty or not a directory containing `go.mod` is an ordinary error. On a setup error the Report still has one Skipped entry per element of `Order` and nil `Packages`.
+2. With `Packages` empty, `ChangedPackages` is used; its error (for example Root not in a git work tree) is a setup error. When it returns nothing, the packages are `["./..."]`.
 3. `Report.Packages` holds the patterns used, sorted and unique.
 4. `Report.Steps` always has one entry per element of `Order`, in that order, even when steps are skipped.
 
@@ -102,14 +102,14 @@ Steps:
 
 5. A step named in `Skip` has `Skipped true`, `OK false`, zero `Duration`, empty `Output`, and does not stop the run.
 6. After the first failed step every later step is `Skipped true`.
-7. `StepFormat` runs `gofmt -l` on the directories of the packages. For `./...` the whole root is listed except `vendor` and `testdata` directories. Any listed file is a failure with `Output` holding the file paths relative to `Root`, one per line, sorted.
+7. `StepFormat` expands each pattern to its .go files (`./x` is that directory only, `./x/...` and `./...` walk it skipping `vendor`, `testdata` and hidden directories) and runs `gofmt -l` on them. Any listed file is a failure with `Output` holding the file paths relative to `Root`, one per line, sorted.
 8. `StepVendor` calls `SyncVendor`. It passes. When it changed something, `Output` is `vendor synced`. An error from `SyncVendor` fails the step with the error text as `Output`.
 9. `StepBuild` runs `go build` with the patterns. Non-zero exit fails with the combined output.
 10. `StepVet` runs `go vet` with the patterns. Non-zero exit fails with the combined output.
 11. `StepTest` runs `go test` with the patterns, or with `./...` when `AllTests`, adding `-race` when `Race`. Non-zero exit fails with the combined output. Passing keeps `Output` empty.
 12. `StepLint` is `Skipped` when `LintVersion` is empty. Otherwise it runs `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@<LintVersion> run <patterns>` from `Root`. Non-zero exit fails with the combined output.
 13. Every step that runs has `Duration` greater than zero.
-14. A cancelled context stops the current step with a failure whose `Output` names the cancellation and skips the rest; `Run` returns `ctx.Err()` as well.
+14. A cancelled context stops the current step with a failure whose `Output` is `cancelled: <ctx.Err()>` and skips the rest; `Run` returns `ctx.Err()` as well. The test binary started by `go test` is killed too, so `Run` returns promptly.
 
 `ChangedPackages`:
 
@@ -121,12 +121,12 @@ Steps:
 `SyncVendor`:
 
 19. No `vendor` directory under `Root` returns `false, nil` without running anything.
-20. Drift is detected by running `go list -m all` from `Root`; an exit with output containing `inconsistent vendoring` or a missing `vendor/modules.txt` is drift. Any other failure is an error.
+20. Drift is detected by a missing `vendor/modules.txt`, or by running `go list -m` from `Root` and seeing `inconsistent vendoring` in the output. Note `go list -m all` cannot be used: in vendor mode Go 1.26 refuses `all` even when the vendor directory is consistent. Any other failure of the go tool is an error.
 21. On drift `go mod vendor` runs; a non-zero exit is an error with the output. Success returns `true, nil`.
 
 `Flaky`:
 
-22. `runs` below 1 is an error. `pkg` is a pattern relative to `Root`. `test` is a test name used as `-run ^<test>$`; an empty `test` runs every test of the package.
+22. `runs` below 1 is an error. `pkg` is a pattern relative to `Root`. `test` is a test name used as `-run ^<test>$`; an empty `test` leaves `-run` out so every test of the package runs.
 23. The command is `go test -count=<runs> -run ^<test>$ [-race] <pkg>` from `Root`, so the test runs `runs` times in one process.
 24. `Failures` counts the lines starting with `--- FAIL: <test>` exactly matching the test name (with the sub-test separator excluded, so sub-test failures do not double count); with empty `test` it counts every top-level `--- FAIL:` line (no slash in the name).
 25. `Output` is the full combined go test output when `Failures` is above zero, and empty otherwise.

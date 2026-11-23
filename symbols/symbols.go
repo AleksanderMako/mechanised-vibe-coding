@@ -5,6 +5,9 @@ package symbols
 import (
 	"context"
 	"errors"
+	"fmt"
+	"go/types"
+	"strings"
 )
 
 // Symbol names a package level declaration, a method or a field.
@@ -14,10 +17,37 @@ type Symbol struct {
 }
 
 // String renders the symbol as "import/path.Name" or "import/path.Type.Member".
-func (s Symbol) String() string { panic("not implemented") }
+func (s Symbol) String() string { return s.Package + "." + s.Name }
 
 // ParseSymbol reads "import/path.Name" or "import/path.Type.Member".
-func ParseSymbol(s string) (Symbol, error) { panic("not implemented") }
+// The import path ends at the last slash plus the first dot separated segment after it.
+func ParseSymbol(s string) (Symbol, error) {
+	if s == "" {
+		return Symbol{}, fmt.Errorf("symbols: empty symbol")
+	}
+	lastSlash := strings.LastIndex(s, "/")
+	directory, lastElement := "", s
+	if lastSlash >= 0 {
+		directory, lastElement = s[:lastSlash+1], s[lastSlash+1:]
+		// A leading slash or an empty path element cannot be an import path.
+		if lastSlash == 0 || strings.Contains(directory, "//") {
+			return Symbol{}, fmt.Errorf("symbols: %q has an empty import path element", s)
+		}
+	}
+	segments := strings.Split(lastElement, ".")
+	if len(segments) < 2 {
+		return Symbol{}, fmt.Errorf("symbols: %q has no dot after the last slash", s)
+	}
+	if len(segments) > 3 {
+		return Symbol{}, fmt.Errorf("symbols: %q has more than two dots after the last slash", s)
+	}
+	for _, segment := range segments {
+		if segment == "" {
+			return Symbol{}, fmt.Errorf("symbols: %q has an empty segment or a trailing dot", s)
+		}
+	}
+	return Symbol{Package: directory + segments[0], Name: strings.Join(segments[1:], ".")}, nil
+}
 
 // Options controls loading. The zero value loads ./... with tests.
 type Options struct {
@@ -57,12 +87,31 @@ var (
 
 // References lists every use of sym except its declaration, sorted and unique.
 func References(ctx context.Context, root string, sym Symbol, opts Options) ([]Reference, error) {
-	panic("not implemented")
+	loaded, err := load(ctx, root, opts)
+	if err != nil {
+		return nil, err
+	}
+	target, err := loaded.resolve(sym)
+	if err != nil {
+		return nil, err
+	}
+	return findReferences(loaded, target)
 }
 
 // Implementations lists the named non-interface types in the loaded packages that satisfy iface.
 func Implementations(ctx context.Context, root string, iface Symbol, opts Options) ([]Symbol, error) {
-	panic("not implemented")
+	loaded, err := load(ctx, root, opts)
+	if err != nil {
+		return nil, err
+	}
+	object, err := loaded.resolve(iface)
+	if err != nil {
+		return nil, err
+	}
+	if !isInterfaceType(object) {
+		return nil, fmt.Errorf("symbols: %s: %w", iface, ErrNotInterface)
+	}
+	return findImplementations(loaded, iface, object), nil
 }
 
 // FieldTag describes one field of a struct type.
@@ -78,5 +127,21 @@ type FieldTag struct {
 
 // StructTags lists the fields of struct type typ in declaration order.
 func StructTags(ctx context.Context, root string, typ Symbol, opts Options) ([]FieldTag, error) {
-	panic("not implemented")
+	loaded, err := load(ctx, root, opts)
+	if err != nil {
+		return nil, err
+	}
+	object, err := loaded.resolve(typ)
+	if err != nil {
+		return nil, err
+	}
+	typeName, isTypeName := object.(*types.TypeName)
+	if !isTypeName {
+		return nil, fmt.Errorf("symbols: %s: %w", typ, ErrNotStruct)
+	}
+	structType, isStruct := types.Unalias(typeName.Type()).Underlying().(*types.Struct)
+	if !isStruct {
+		return nil, fmt.Errorf("symbols: %s: %w", typ, ErrNotStruct)
+	}
+	return structFields(loaded, typeName, structType)
 }

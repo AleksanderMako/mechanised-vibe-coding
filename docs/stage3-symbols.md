@@ -98,7 +98,7 @@ var ErrNotStruct = errors.New("symbol is not a struct")
 
 `ParseSymbol`:
 
-1. An empty string, a string without a dot after the last slash, a trailing dot or more than two dots after the last slash is an error.
+1. An empty string, a string without a dot after the last slash, a trailing dot, an empty segment (`a/.B`, `io..X`), a leading slash, `//` in the path, or more than two dots after the last slash is an error.
 2. Everything before the last slash plus the segment up to the first dot after it is the package; the rest is the name.
 3. `String` is the inverse for every valid symbol.
 
@@ -114,8 +114,8 @@ Loading:
 8. Every identifier in the loaded packages whose `types.Object` is the symbol's object is a reference, except the declaring identifier. For generics the origin object is compared so instantiations count.
 9. Test variants of a package produced by `go/packages` (the package with test files and the external test package) can contain the same non-test file twice; duplicates by `File`, `Line`, `Column` are removed.
 10. `Kind` classification, by the innermost enclosing node of the identifier (looking through a selector `x.Name` to its parent):
-   - parent is a `CallExpr` with the identifier (or selector) as `Fun`: `KindConversion` when the object is a type, else `KindCall`;
-   - the identifier is the type of an embedded field (a `Field` with no names) in a struct or interface: `KindEmbed`;
+   - parent is a `CallExpr` with the identifier (or selector, or for a generic symbol the explicit instantiation `F[int]`) as `Fun`: `KindConversion` when the object is a type, else `KindCall`;
+   - the identifier is the type of an embedded field (a `Field` with no names) in a struct or interface, also behind `*`, a package qualifier or type arguments: `KindEmbed`; union elements of an interface type set are `KindType`;
    - the object is a type used anywhere else: `KindType`;
    - otherwise `KindValue`. A method value `x.M` not called is `KindValue`.
 11. `Test` is true when the file name ends in `_test.go`.
@@ -124,14 +124,14 @@ Loading:
 
 `Implementations`:
 
-14. `iface` must resolve to a named type whose underlying type is an interface, else wraps `ErrNotInterface`.
+14. `iface` must resolve to a named type (or an alias of one) whose underlying type is an interface, else wraps `ErrNotInterface`.
 15. Candidates are the named types declared at package level in the loaded packages, excluding interfaces and type aliases. A candidate is listed when `types.Implements(T, iface)` or `types.Implements(*T, iface)` holds. An empty interface lists every candidate.
 16. Each listed type appears once, as `Symbol{Package, TypeName}`, sorted by `String()`.
 
 `StructTags`:
 
-17. `typ` must resolve to a named type whose underlying type is a struct, else wraps `ErrNotStruct`.
-18. Fields are listed in declaration order. `Type` is the type expression as written in the source file, printed with `go/printer`. Embedded fields have `Field` set to the type's name without package qualifier or pointer.
+17. `typ` must resolve to a named type (or an alias of one) whose underlying type is a struct, else wraps `ErrNotStruct`. Struct types from dependencies, including the standard library, work too.
+18. Fields are listed in declaration order; a multi-name field `A, B T` gives one entry per name. `Type` is the type expression as written in the source file, printed with `go/printer`; for `type B A` with no struct literal of its own it is the `go/types` string. Embedded fields have `Field` set to the type's name without package qualifier or pointer.
 19. `Tag` is the raw tag text without the surrounding back quotes. `JSON` is the first comma separated part of the `json` tag; `OmitEmpty` is true when a later part is `omitempty`. A `json:"-"` tag gives `JSON` `-`. A `json:",omitempty"` tag gives empty `JSON` and `OmitEmpty` true.
 
 ### Out of scope

@@ -76,22 +76,22 @@ func EnclosingDecl(src []byte, line int) (string, error)
 
 `ParseHunks`:
 
-4. Markers are lines starting with `<<<<<<< `, `=======`, `>>>>>>> ` and optionally `||||||| ` for diff3 style, each at line start. Line endings are `\n`; `\r\n` input is accepted and the sides keep `\r\n`.
-5. A `<<<<<<<` without a matching `>>>>>>>`, or markers in a wrong order, is an error naming the line. Text outside hunks is ignored.
+4. Markers are lines starting with `<<<<<<< `, `=======`, `>>>>>>> ` and optionally `||||||| ` for diff3 style, each at line start; the trailing space after the angle brackets and bars is required. Line endings are `\n`; `\r\n` input is accepted and the sides and base keep `\r\n`. A final marker without a trailing newline is accepted.
+5. A `<<<<<<<` without a matching `>>>>>>>` is an error naming that marker's line; a marker in a wrong order, including a stray `=======`, `|||||||` or `>>>>>>>` with no open hunk, is an error naming the offending line. Non-marker text outside hunks is ignored.
 6. `Ours` is the text between `<<<<<<<` and `|||||||` or `=======`; `Base` between `|||||||` and `=======`; `Theirs` between `=======` and `>>>>>>>`. Each side includes its trailing newline when it has lines and is `""` when it has none. `OursDeleted` and `TheirsDeleted` follow from emptiness.
 7. `Start` and `End` are the lines of the `<<<<<<<` and `>>>>>>>` markers. `File` is left empty by `ParseHunks`.
 
 `EnclosingDecl`:
 
 8. `src` is parsed with `go/parser` with comments; a parse error is returned as is. Each top level declaration covers the lines from the start of its doc comment to its end line.
-9. The result is `func Name`, `func (r *T) Name` or `func (T) Name` as written with the receiver type, `type Name`, `var Name` or `const Name` for single specs, the name of the first spec for grouped `var`/`const` with a trailing `...` when more than one (`const a...`), and `import`. The line being outside every declaration gives `""`.
+9. The result is `func Name`, `func (r *T) Name` or `func (T) Name` as written with the receiver type (generic receivers keep their type parameters), `type Name`, `var Name` or `const Name` for single specs (a spec with several names gives the first), the name of the first spec for grouped `var`/`const`/`type` with a trailing `...` when more than one spec (`const a...`), and `import`. The line being outside every declaration gives `""`.
 
 `Conflicts`:
 
 10. Conflicted files come from `git diff --name-only --diff-filter=U` from `Root`; an empty list returns an empty slice and no error, provided `Detect` succeeds. `Detect` failing returns its error.
 11. Each file is read and parsed with `ParseHunks`; `File` is set to the absolute path.
-12. For `.go` files, the declaration on each side is found by resolving the whole file to that side (every hunk replaced by its own side's text), parsing it, and taking `EnclosingDecl` at the line where the hunk's text starts in the resolved file. For a deleted side the line examined is the one after the hunk's position, so the declaration the deletion sits inside, if any, is still named. A resolved file that does not parse gives `""` for that side without error.
-13. `TheirCommits` is `git log --format=<hash>%x00<subject>%x00<author>%x00<iso date> <TheirHead> ^<OurHead> -- <file>`, newest first, limited to the commits whose diff touches the hunk's text: the commit is kept when `git show <hash> -- <file>` contains at least one line of `Theirs` as an added line (`+` prefixed), or, when their side is deleted, at least one line of `Ours` as a removed line. When no commit matches, every commit of the file in that range is returned, so the list is never empty when their side changed the file.
+12. For `.go` files, the declaration on each side is found by resolving the whole file to that side (every hunk replaced by its own side's text), parsing it, and taking `EnclosingDecl` at the line where the hunk's text starts in the resolved file. For a deleted side that is the line that follows the empty hunk, so the declaration the deletion sits inside, if any, is still named; a deletion at the end of the file gives `""`. A resolved file that does not parse gives `""` for that side without error. A conflicted file missing from the working tree is skipped; one without markers gives no hunks.
+13. `TheirCommits` is `git log --format=<hash>%x00<subject>%x00<author>%x00<iso date> <TheirHead> ^<OurHead> -- <file>`, newest first, limited to the commits whose diff touches the hunk's text: the commit is kept when `git show <hash> -- <file>` contains at least one non-blank line of `Theirs` as an added line (`+` prefixed), or, when their side is deleted, at least one non-blank line of `Ours` as a removed line. When no commit matches, every commit of the file in that range is returned, so the list is never empty when their side changed the file. The date is the author date.
 14. `PR` is parsed from the last `(#N)` in the subject.
 
 ### Out of scope

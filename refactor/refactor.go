@@ -28,15 +28,15 @@ var (
 
 // Rename renames sym everywhere it is declared and used.
 func Rename(ctx context.Context, root string, sym symbols.Symbol, newName string, opts Options) ([]string, error) {
-	panic("not implemented")
+	return rename(ctx, root, sym, newName, opts)
 }
 
 // Move moves top level declarations to the package at toImportPath, into toFile.
 func Move(ctx context.Context, root string, syms []symbols.Symbol, toImportPath, toFile string, opts Options) ([]string, error) {
-	panic("not implemented")
+	return move(ctx, root, syms, toImportPath, toFile, opts)
 }
 
 // Demethodize turns method Type.Method into a package level function and rewrites every call.
 func Demethodize(ctx context.Context, root string, method symbols.Symbol, newName string, opts Options) ([]string, error) {
-	panic("not implemented")
+	return demethodize(ctx, root, method, newName, opts)
 }

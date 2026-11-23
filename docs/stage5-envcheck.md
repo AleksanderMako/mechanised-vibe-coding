@@ -80,7 +80,7 @@ func Conflicts(sources []Source, rules ...Rule) []string
 `Vars`:
 
 1. `pkgDir` must hold Go files; they are parsed with `go/parser`, test files excluded. `typeName` must be a top level struct type in that package, else an error naming it.
-2. Fields are walked in declaration order. A field whose type is a struct declared in the same package, or an embedded struct, is walked recursively with the field path joined by dots; embedded fields add their type name to the path.
+2. Fields are walked in declaration order. A field whose type is a struct declared in the same package, a pointer to one, an inline anonymous struct, or an embedded struct, is walked recursively with the field path joined by dots; embedded fields add their type name to the path. The struct field itself produces no Var, and self-referencing structs are cut off.
 3. The `arg` tag is split on commas. A part `env:NAME` gives `Name`. A bare part `env` gives the field name upper cased (go-arg behaviour). A part `required` sets `Required`. Fields without an `env` part are skipped. A `default` tag gives `Default`, and a `Default` clears `Required`.
 4. Fields with the tag `arg:"-"` are skipped, including their nested structs.
 5. The returned slice is in declaration order with duplicates by `Name` kept, so a variable read by two fields appears twice.
@@ -88,24 +88,24 @@ func Conflicts(sources []Source, rules ...Rule) []string
 `ReadEnvFile`:
 
 6. Lines are trimmed. Empty lines and lines starting with `#` are skipped. An optional `export ` prefix is removed. The line is split at the first `=`; a line without `=` is an error naming the line number.
-7. Values are trimmed; a value wrapped in matching single or double quotes loses the quotes; inside double quotes `\n`, `\"` and `\\` are unescaped. An unquoted value loses a trailing ` # comment`.
+7. Values are trimmed; a value wholly wrapped in matching single or double quotes loses the quotes; inside double quotes `\n`, `\"` and `\\` are unescaped. An unquoted value loses a trailing ` # comment` (space, hash); a `#` without a space before it stays. A quoted value followed by a comment is not recognised as quoted.
 8. A later line with the same key wins. `Source.Name` is the path as given.
 
 `ReadManifests`:
 
 9. Each file may hold several YAML documents separated by `---`. Documents whose `kind` is `Deployment`, `StatefulSet`, `DaemonSet`, `Job`, `CronJob` or `Pod` are read; others are skipped. The pod spec is found at the usual path for each kind (`spec.template.spec`, `spec.jobTemplate.spec.template.spec`, `spec` for Pod).
-10. Both `containers` and `initContainers` yield a `Source` named `path#kind/metadata.name/containerName`. Each `env` entry with `value` sets that value; with `valueFrom` sets `ValueFromReference`. `envFrom` entries add nothing, because their keys are unknown; the count of them is not reported.
-11. A document that does not parse as YAML is an error naming the file and document index. A document missing the pod spec path is skipped.
+10. Both `containers` (first) and `initContainers` yield a `Source` named `path#kind/metadata.name/containerName`. Scalar values that are not strings are rendered as strings, so `8080` becomes `"8080"`. Each `env` entry with `value` sets that value; with `valueFrom` sets `ValueFromReference`. `envFrom` entries add nothing, because their keys are unknown; the count of them is not reported.
+11. A document that does not parse as YAML is an error naming the file and the document index (0-based, with the 1-based number in brackets). A document missing the pod spec path is skipped.
 
 `Check`:
 
 12. A variable is missing when no source has its `Name` as a key. `Missing.Sources` lists every source name in input order. `Required` does not change what is missing, it is kept on the `Var` for the caller to decide.
-13. `provided` maps each variable name present in at least one source to the names of those sources, in input order.
-14. Variables with the same `Name` appear once in `missing`.
+13. `provided` maps each variable name of `vars` present in at least one source to the names of those sources, in input order, once each. Keys no Var reads are left out. `provided` is never nil.
+14. Variables with the same `Name` appear once in `missing`, with the first `Var` that reads the name. A key counts as set when present, even with an empty value.
 
 Rules:
 
-15. `Distinct`: when two or more of the names are set, every pair of set values must differ; a violation names the two variables and the shared value is not printed.
+15. `Distinct`: when two or more of the names are set, every pair of set values must differ; one violation per equal pair names the two variables and the shared value is not printed.
 16. `Together`: when at least one is set and at least one is not, one violation names the unset ones.
 17. `Requires`: when `name` is set, every missing one of `others` is one violation.
 18. `Conflicts` merges `sources` in order with later values overriding and runs every rule, returning the violations in rule order then variable order. A `ValueFromReference` counts as set.

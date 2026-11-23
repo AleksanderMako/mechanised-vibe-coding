@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 2
+  template:
+    spec:
+      initContainers:
+        - name: migrate
+          env:
+            - name: DB_HOST
+              value: db.internal
+      containers:
+        - name: server
+          env:
+            - name: APP_HOST
+              value: "0.0.0.0"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db
+                  key: password
+            - name: PORT
+              value: "8080"
+          envFrom:
+            - configMapRef:
+                name: shared-config
+            - secretRef:
+                name: shared-secret
+        - name: sidecar
+          image: busybox
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  ports:
+    - port: 80
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: report
+              env:
+                - name: REPORT_MODE
+                  value: full
+                - name: API_KEY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: keys
+                      key: api
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug
+spec:
+  containers:
+    - name: shell
+      env:
+        - name: DEBUG
+          value: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shared-config
+data:
+  SHOULD_NOT_APPEAR: "1"

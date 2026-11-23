@@ -24,6 +24,29 @@ about Go modules and git, nothing about any one project.
 | 7     | `deadcode`  | What a change orphaned: whole module reachability before and after.          |
 | 8     | `cmd/mvc`   | One command, one subcommand per package.                                     |
 
+## Usage
+
+```sh
+go install github.com/AleksanderMako/machanised-vibe-coding/cmd/mvc@latest
+
+# check a batch of text edits without writing, edits read from stdin
+mvc edit check -root . - < edits.json
+
+# the pre-push loop on two packages, lint included
+mvc verify run -pkg ./lib/foo -pkg ./lib/bar -lint v2.12.2
+
+# every use of a symbol, as JSON for an agent
+mvc symbols refs -json example.com/m/lib.Config.Name
+
+# functions the working tree orphaned compared to main
+mvc dead orphaned main
+```
+
+`mvc` alone lists the groups, `mvc <group>` its actions and
+`mvc <group> <action> -h` the flags and output format. Exit code `0` is
+success, `1` a negative result such as a failed check or dead code found, `2`
+a usage or other error. `-json` prints the package result type and nothing else.
+
 ## How it is built
 
 Each stage has a contract in `docs/stageN-*.md` with the exact exported API.

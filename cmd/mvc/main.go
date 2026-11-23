@@ -3,11 +3,27 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
+	"os/signal"
 )
 
+// groups is the dispatch table: every group and its actions, in usage order.
+var groups = []group{
+	editGroup,
+	astGroup,
+	verifyGroup,
+	symbolsGroup,
+	refactorGroup,
+	envGroup,
+	mergeGroup,
+	deadGroup,
+}
+
 func main() {
-	fmt.Fprintln(os.Stderr, "mvc: not implemented")
-	os.Exit(2)
+	// Ctrl-C cancels the context so child go and git processes stop too.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	code := dispatch(ctx, os.Args[1:])
+	stop()
+	os.Exit(code)
 }

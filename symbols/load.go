@@ -103,27 +103,56 @@ func (l *loadResult) tolerate(sym Symbol, policy scanPolicy, opts Options) error
 	if opts.Strict {
 		return nil
 	}
+	if err := l.checkDeclaring(sym); err != nil {
+		return err
+	}
+	emitLogLines(l.admitBroken([]string{sym.Package}, policy), opts.Logf)
+	return nil
+}
+
+// checkDeclaring fails when the package declaring sym, or one of its test variants, is broken,
+// since its symbol table cannot be trusted.
+func (l *loadResult) checkDeclaring(sym Symbol) error {
 	for _, pkg := range brokenpkg.InVisitOrder(l.matched) {
 		if pkg.PkgPath == sym.Package && brokenpkg.IsBroken(pkg) {
 			return fmt.Errorf("symbols: package %s: %v", pkg.ID, pkg.Errors[0])
 		}
 	}
-	logf := opts.Logf
-	if logf == nil {
-		logf = func(string, ...any) {}
-	}
+	return nil
+}
+
+// admitBroken adds the broken packages that may hold a result for symbols declared in
+// declaringPackages to the scanned ones, and returns one log line per broken package.
+func (l *loadResult) admitBroken(declaringPackages []string, policy scanPolicy) []string {
 	byID := brokenpkg.IndexByID(l.matched)
+	var lines []string
 	for _, pkg := range l.broken {
-		scan := policy == scanAll || (policy == scanDependents && brokenpkg.DependsOn(pkg, sym.Package, byID))
+		scan := policy == scanAll
+		for _, declaring := range declaringPackages {
+			if scan || policy != scanDependents {
+				break
+			}
+			scan = brokenpkg.DependsOn(pkg, declaring, byID)
+		}
 		// A package that failed before type checking has nothing to scan.
 		if scan && pkg.Types != nil && pkg.TypesInfo != nil {
-			logf("symbols: package %s has errors, results there are best effort: %v", pkg.ID, pkg.Errors[0])
+			lines = append(lines, fmt.Sprintf("symbols: package %s has errors, results there are best effort: %v", pkg.ID, pkg.Errors[0]))
 			l.packages = append(l.packages, pkg)
 			continue
 		}
-		logf("symbols: ignoring package %s: %v", pkg.ID, pkg.Errors[0])
+		lines = append(lines, fmt.Sprintf("symbols: ignoring package %s: %v", pkg.ID, pkg.Errors[0]))
 	}
-	return nil
+	return lines
+}
+
+// emitLogLines hands each line to logf, which may be nil for silence.
+func emitLogLines(lines []string, logf func(format string, args ...any)) {
+	if logf == nil {
+		return
+	}
+	for _, line := range lines {
+		logf("%s", line)
+	}
 }
 
 // checkRoot returns root as an absolute path after making sure it holds a go.mod.

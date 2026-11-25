@@ -16,10 +16,12 @@ var symbolsGroup = group{
 	actions: []action{
 		{
 			name:     "refs",
-			synopsis: "-root DIR [-pkg P]... [-no-tests] [-strict] [-json] SYMBOL",
-			help: `Lists every use of SYMBOL except its declaration, one per line as
-FILE:LINE:COL<TAB>KIND<TAB>CONTEXT. With -json the []symbols.Reference.
-` + symbolArgHelp,
+			synopsis: "-root DIR [-pkg P]... [-no-tests] [-no-generated] [-strict] [-json] SYMBOL...",
+			help: `Lists every use of any SYMBOL except declarations, one per line as
+FILE:LINE:COL<TAB>KIND<TAB>SYMBOL<TAB>CONTEXT, where SYMBOL is the declaration
+used. "import/path.Type.*" stands for every method of Type. -no-generated
+leaves out files with a "// Code generated ... DO NOT EDIT." header. With
+-json the []symbols.Reference. ` + symbolArgHelp,
 			setup: setupSymbolsRefs,
 		},
 		{
@@ -60,14 +62,31 @@ func parseOneSymbol(args []string) (symbols.Symbol, error) {
 	return symbols.ParseSymbol(args[0])
 }
 
+// parseSymbols checks there is at least one positional argument and parses each one.
+func parseSymbols(args []string) ([]symbols.Symbol, error) {
+	if len(args) == 0 {
+		return nil, usageErrorf("want at least one symbol argument")
+	}
+	parsed := make([]symbols.Symbol, 0, len(args))
+	for _, arg := range args {
+		symbol, err := symbols.ParseSymbol(arg)
+		if err != nil {
+			return nil, usageErrorf("symbol %q: %v", arg, err)
+		}
+		parsed = append(parsed, symbol)
+	}
+	return parsed, nil
+}
+
 func setupSymbolsRefs(flags *flag.FlagSet) func(context.Context, []string) error {
 	root := addRootFlag(flags)
 	packages := addPackagesFlag(flags)
 	noTests := flags.Bool("no-tests", false, "leave _test.go files out")
+	noGenerated := flags.Bool("no-generated", false, `leave out files with a "Code generated ... DO NOT EDIT." header`)
 	strict := addStrictFlag(flags)
 	asJSON := addJSONFlag(flags)
 	return func(ctx context.Context, args []string) error {
-		symbol, err := parseOneSymbol(args)
+		parsed, err := parseSymbols(args)
 		if err != nil {
 			return err
 		}
@@ -75,8 +94,8 @@ func setupSymbolsRefs(flags *flag.FlagSet) func(context.Context, []string) error
 		if err != nil {
 			return err
 		}
-		options := symbols.Options{Patterns: *packages, ExcludeTests: *noTests, Strict: *strict, Logf: warn}
-		references, err := symbols.References(ctx, absolute, symbol, options)
+		options := symbols.Options{Patterns: *packages, ExcludeTests: *noTests, ExcludeGenerated: *noGenerated, Strict: *strict, Logf: warn}
+		references, err := symbols.ReferencesTo(ctx, absolute, parsed, options)
 		if err != nil {
 			return err
 		}
@@ -84,7 +103,7 @@ func setupSymbolsRefs(flags *flag.FlagSet) func(context.Context, []string) error
 			return printJSON(references)
 		}
 		for _, ref := range references {
-			fmt.Printf("%s:%d:%d\t%s\t%s\n", ref.File, ref.Line, ref.Column, ref.Kind, ref.Context)
+			fmt.Printf("%s:%d:%d\t%s\t%s\t%s\n", ref.File, ref.Line, ref.Column, ref.Kind, ref.Symbol.String(), ref.Context)
 		}
 		return nil
 	}

@@ -20,21 +20,32 @@ type referencePosition struct {
 	column int
 }
 
-// findReferences walks every file of every loaded package for identifiers using target.
-func findReferences(loaded *loadResult, target types.Object) ([]Reference, error) {
-	targetKey := loaded.keyOf(target)
+// findReferences walks every file of every loaded package for identifiers using one of the
+// targets, which map each object key to the symbol its references report.
+func findReferences(loaded *loadResult, targets map[objectKey]Symbol, excludeGenerated bool) ([]Reference, error) {
+	targetNames := map[string]bool{}
+	for key := range targets {
+		targetNames[key.name] = true
+	}
 	seen := map[referencePosition]bool{}
 	sourceLines := map[string][][]byte{}
 	references := []Reference{}
 	for _, pkg := range loaded.packages {
-		matches := matchingIdents(loaded, pkg, targetKey)
+		matches := matchingIdents(loaded, pkg, targets, targetNames)
 		if len(matches) == 0 {
 			continue
 		}
 		for _, file := range pkg.Syntax {
+			generated := ast.IsGenerated(file)
+			if generated && excludeGenerated {
+				continue
+			}
 			fileReferences, err := referencesInFile(loaded, pkg, file, matches, seen, sourceLines)
 			if err != nil {
 				return nil, err
+			}
+			for index := range fileReferences {
+				fileReferences[index].Generated = generated
 			}
 			references = append(references, fileReferences...)
 		}
@@ -50,23 +61,30 @@ func findReferences(loaded *loadResult, target types.Object) ([]Reference, error
 	return references, nil
 }
 
-// matchingIdents returns the identifiers of pkg that use the target object.
+// matchedUse is an identifier that uses a target: the object it resolves to and the symbol to report.
+type matchedUse struct {
+	object types.Object
+	symbol Symbol
+}
+
+// matchingIdents returns the identifiers of pkg that use one of the target objects.
 // Uses never holds a declaring identifier, so declarations are left out by construction.
-func matchingIdents(loaded *loadResult, pkg *packages.Package, targetKey objectKey) map[*ast.Ident]types.Object {
-	matches := map[*ast.Ident]types.Object{}
+func matchingIdents(loaded *loadResult, pkg *packages.Package, targets map[objectKey]Symbol, targetNames map[string]bool) map[*ast.Ident]matchedUse {
+	matches := map[*ast.Ident]matchedUse{}
 	for ident, object := range pkg.TypesInfo.Uses {
-		if object.Name() != targetKey.name {
+		// Comparing names first skips computing positions for almost every identifier.
+		if !targetNames[object.Name()] {
 			continue
 		}
-		if loaded.keyOf(object) == targetKey {
-			matches[ident] = object
+		if symbol, isTarget := targets[loaded.keyOf(object)]; isTarget {
+			matches[ident] = matchedUse{object: object, symbol: symbol}
 		}
 	}
 	return matches
 }
 
 // referencesInFile classifies the matching identifiers of one file using their enclosing nodes.
-func referencesInFile(loaded *loadResult, pkg *packages.Package, file *ast.File, matches map[*ast.Ident]types.Object,
+func referencesInFile(loaded *loadResult, pkg *packages.Package, file *ast.File, matches map[*ast.Ident]matchedUse,
 	seen map[referencePosition]bool, sourceLines map[string][][]byte) ([]Reference, error) {
 	var references []Reference
 	var readErr error
@@ -77,8 +95,8 @@ func referencesInFile(loaded *loadResult, pkg *packages.Package, file *ast.File,
 			return false
 		}
 		if ident, isIdent := node.(*ast.Ident); isIdent {
-			if object, matched := matches[ident]; matched {
-				reference, err := makeReference(loaded, pkg, ident, object, stack, seen, sourceLines)
+			if use, matched := matches[ident]; matched {
+				reference, err := makeReference(loaded, pkg, ident, use, stack, seen, sourceLines)
 				if err != nil && readErr == nil {
 					readErr = err
 				}
@@ -94,7 +112,7 @@ func referencesInFile(loaded *loadResult, pkg *packages.Package, file *ast.File,
 }
 
 // makeReference builds the Reference for ident, or returns nil when that position was already reported.
-func makeReference(loaded *loadResult, pkg *packages.Package, ident *ast.Ident, object types.Object, parents []ast.Node,
+func makeReference(loaded *loadResult, pkg *packages.Package, ident *ast.Ident, use matchedUse, parents []ast.Node,
 	seen map[referencePosition]bool, sourceLines map[string][][]byte) (*Reference, error) {
 	position := loaded.fileSet.Position(ident.Pos())
 	key := referencePosition{file: position.Filename, line: position.Line, column: position.Column}
@@ -115,9 +133,10 @@ func makeReference(loaded *loadResult, pkg *packages.Package, ident *ast.Ident, 
 		File:    position.Filename,
 		Line:    position.Line,
 		Column:  position.Column,
-		Kind:    classify(ident, object, parents),
+		Kind:    classify(ident, use.object, parents),
 		Test:    strings.HasSuffix(position.Filename, "_test.go"),
 		Context: context,
+		Symbol:  use.symbol,
 	}, nil
 }
 

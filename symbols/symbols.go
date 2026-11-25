@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
+	"slices"
 	"strings"
 )
 
@@ -55,6 +56,8 @@ type Options struct {
 	ExcludeTests bool                             // leave _test.go files out
 	Strict       bool                             // any broken package is an error, the behaviour before stage 9
 	Logf         func(format string, args ...any) // one line per tolerated broken package; nil means silent
+
+	ExcludeGenerated bool // leave references that sit in generated files out of the result
 }
 
 // Kind says how a reference uses the symbol.
@@ -78,6 +81,9 @@ type Reference struct {
 	Kind    Kind
 	Test    bool   // the use is in a _test.go file
 	Context string // the source line, trimmed
+
+	Generated bool   // the file carries the "Code generated ... DO NOT EDIT." header
+	Symbol    Symbol // the declaration this is a use of; never a method set symbol
 }
 
 // Sentinel errors wrapped by the lookups.
@@ -89,18 +95,48 @@ var (
 
 // References lists every use of sym except its declaration, sorted and unique.
 func References(ctx context.Context, root string, sym Symbol, opts Options) ([]Reference, error) {
+	return ReferencesTo(ctx, root, []Symbol{sym}, opts)
+}
+
+// ReferencesTo lists every use of any symbol in syms except declarations, sorted and unique.
+// A method set symbol Type.* stands for every method of Type (stage 10).
+func ReferencesTo(ctx context.Context, root string, syms []Symbol, opts Options) ([]Reference, error) {
+	if len(syms) == 0 {
+		return nil, errors.New("symbols: no symbols given")
+	}
 	loaded, err := load(ctx, root, opts)
 	if err != nil {
 		return nil, err
 	}
-	if err := loaded.tolerate(sym, scanDependents, opts); err != nil {
-		return nil, err
+	// Broken packages are admitted for all symbols at once so each gets one log line per call.
+	var logLines []string
+	if !opts.Strict {
+		declaringPackages := make([]string, 0, len(syms))
+		for _, sym := range syms {
+			if !slices.Contains(declaringPackages, sym.Package) {
+				declaringPackages = append(declaringPackages, sym.Package)
+			}
+		}
+		logLines = loaded.admitBroken(declaringPackages, scanDependents)
 	}
-	target, err := loaded.resolve(sym)
-	if err != nil {
-		return nil, err
+	targets := map[objectKey]Symbol{}
+	for _, sym := range syms {
+		if !opts.Strict {
+			if err := loaded.checkDeclaring(sym); err != nil {
+				return nil, err
+			}
+		}
+		expanded, err := loaded.expand(sym)
+		if err != nil {
+			return nil, err
+		}
+		for _, each := range expanded {
+			// One object always yields one declaring symbol, so a repeated key changes nothing.
+			targets[loaded.keyOf(each.object)] = each.symbol
+		}
 	}
-	return findReferences(loaded, target)
+	emitLogLines(logLines, opts.Logf)
+	return findReferences(loaded, targets, opts.ExcludeGenerated)
 }
 
 // Implementations lists the named non-interface types in the loaded packages that satisfy iface.

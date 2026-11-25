@@ -55,6 +55,8 @@ type Options struct {
 	ExcludeTests bool                             // leave _test.go files out
 	Strict       bool                             // any broken package is an error, the behaviour before stage 9
 	Logf         func(format string, args ...any) // one line per tolerated broken package; nil means silent
+
+	ExcludeGenerated bool // leave references that sit in generated files out of the result
 }
 
 // Kind says how a reference uses the symbol.
@@ -78,6 +80,9 @@ type Reference struct {
 	Kind    Kind
 	Test    bool   // the use is in a _test.go file
 	Context string // the source line, trimmed
+
+	Generated bool   // the file carries the "Code generated ... DO NOT EDIT." header
+	Symbol    Symbol // the declaration this is a use of; never a method set symbol
 }
 
 // Sentinel errors wrapped by the lookups.
@@ -101,6 +106,12 @@ func References(ctx context.Context, root string, sym Symbol, opts Options) ([]R
 		return nil, err
 	}
 	return findReferences(loaded, target)
+}
+
+// ReferencesTo lists every use of any symbol in syms except declarations, sorted and unique.
+// A method set symbol Type.* stands for every method of Type (stage 10).
+func ReferencesTo(ctx context.Context, root string, syms []Symbol, opts Options) ([]Reference, error) {
+	return nil, errors.New("symbols.ReferencesTo: not implemented")
 }
 
 // Implementations lists the named non-interface types in the loaded packages that satisfy iface.

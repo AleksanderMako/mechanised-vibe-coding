@@ -24,6 +24,7 @@ about Go modules and git, nothing about any one project.
 | 7     | `deadcode`  | What a change orphaned: whole module reachability before and after.          |
 | 8     | `cmd/mvc`   | One command, one subcommand per package.                                     |
 | 9     | tolerance   | Broken packages no longer block `symbols`, `refactor` and `dead`; `-strict` restores the old behaviour. |
+| 10    | method sets | `symbols refs` takes several symbols and `Type.*` for a method set; references say which declaration they use and whether their file is generated, `-no-generated` drops those. |
 ## Usage
 
 ```sh
@@ -37,6 +38,9 @@ mvc verify run -pkg ./lib/foo -pkg ./lib/bar -lint v2.12.2
 
 # every use of a symbol, as JSON for an agent
 mvc symbols refs -json example.com/m/lib.Config.Name
+
+# every call of any method of DB or of Tx, generated files left out
+mvc symbols refs -no-generated 'example.com/m/db.DB.*' 'example.com/m/db.Tx.*'
 
 # functions the working tree orphaned compared to main
 mvc dead orphaned main

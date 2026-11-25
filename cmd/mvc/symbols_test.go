@@ -9,7 +9,7 @@ import (
 	"github.com/AleksanderMako/mechanised-vibe-coding/symbols"
 )
 
-// referenceLine is rule 5's FILE:LINE:COL\tKIND\tCONTEXT.
+// referenceLine is rule 5's FILE:LINE:COL\tKIND\tCONTEXT; since stage 10 a SYMBOL column sits before CONTEXT, which .+ absorbs.
 var referenceLine = regexp.MustCompile(`^.+:\d+:\d+\t(call|conversion|type|embed|value)\t.+$`)
 
 // newSquareSymbol is called from alpha, beta, gamma and the shapes test.

@@ -20,9 +20,10 @@ No existing exported signature changes. `symbols.Options` gains one field,
 ## Definitions
 
 - A **generated file** is a file for which `go/ast.IsGenerated` reports true:
-  a comment line `// Code generated ... DO NOT EDIT.` (or the `/* */` form)
-  before the first non-comment, non-blank text, as described at
-  https://go.dev/s/generatedcode. The file name plays no part.
+  a line comment `// Code generated ... DO NOT EDIT.` before the package
+  clause, as described at https://go.dev/s/generatedcode. The `/* */` form is
+  not recognised by `IsGenerated` and so does not count. The file name plays
+  no part.
 - A **method set symbol** is a `Symbol` whose `Name` is `Type.*`: a type name,
   a dot and a single asterisk. `ParseSymbol` already accepts it ("*" is a non
   empty segment) and `String` renders it back; nothing in `ParseSymbol` changes.
@@ -84,11 +85,17 @@ below extend them.
     `References` accepts as input. For a method it is the type that declares
     the method, so a method reached through an embedded interface reports the
     embedded interface's type (`io.Reader.Read` for a call through an
-    interface that embeds `io.Reader`), and a method declared on `*T` reports
-    `T.Method`.
-24. `References(ctx, root, sym, opts)` fills `Symbol` too. For a plain symbol
-    `Symbol` equals `sym`; for a method set symbol it is the method the
-    reference uses.
+    interface that embeds `io.Reader`), a method promoted from an embedded
+    struct field reports the embedded type, a method declared on `*T` reports
+    `T.Method`, and a method reached through a type alias reports the aliased
+    named type. Fields (`Type.Field`) are reported as given.
+24. `References(ctx, root, sym, opts)` fills `Symbol` too, always in the
+    declaring form of rule 23. For a plain symbol that already names the
+    declaring type (`io.Reader.Read`, `pkg.Type.Method`) that is `sym`; for a
+    plain symbol that names an inherited method (`io.ReadCloser.Read`) it is
+    the declaring type's form (`io.Reader.Read`); for a method set symbol it
+    is the method the reference uses. So one position always carries one
+    `Symbol`, whichever entry of `syms` led to it (rule 31).
 
 Method set symbols, in `References` and `ReferencesTo` alike:
 
@@ -132,8 +139,9 @@ mvc symbols refs -root DIR [-pkg P]... [-no-tests] [-no-generated] [-strict] [-j
 
 35. One or more `SYMBOL` arguments; none is a usage error (exit 2, usage on
     stderr). Each is parsed with `ParseSymbol`; a parse failure is a usage
-    error naming the argument. The action calls `ReferencesTo` with all of
-    them, also when only one is given.
+    error, one `mvc: ` line naming the argument followed by the usage, both on
+    stderr, exit 2. The action calls `ReferencesTo` with all of them, also
+    when only one is given.
 36. `-no-generated` sets `ExcludeGenerated`. `-no-tests`, `-strict`, `-pkg`,
     `-root` and `-json` keep their meaning.
 37. Text output is one line per reference,
@@ -143,7 +151,8 @@ mvc symbols refs -root DIR [-pkg P]... [-no-tests] [-no-generated] [-strict] [-j
 38. `-json` prints the `[]symbols.Reference`, with `Generated` and `Symbol`
     present on every element.
 39. An unresolved symbol is an ordinary error (exit 2, one `mvc: ` line on
-    stderr). An empty result is success with no output (exit 0).
+    stderr). An empty result is success (exit 0): no output in text mode, `[]`
+    with `-json`.
 40. The action help names the `Type.*` form and `-no-generated`.
 
 ## Out of scope
